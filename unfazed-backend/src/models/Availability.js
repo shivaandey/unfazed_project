@@ -1,14 +1,18 @@
 const mongoose = require('mongoose');
 
 const availabilitySchema = new mongoose.Schema({
-  therapistId: { type: mongoose.Schema.Types.ObjectId, ref: 'Therapist', required: true },
-  dayOfWeek: { type: Number, required: true, min: 0, max: 6 }, // 0 = Sunday, 6 = Saturday
-  slots: [{
-    startTime: { type: String, required: true }, // e.g., "09:00"
-    endTime: { type: String, required: true }    // e.g., "17:00"
+  therapistId: { type: mongoose.Schema.Types.ObjectId, ref: 'Therapist', required: true, unique: true },
+  weeklySchedule: [{
+    dayOfWeek: { type: Number, min: 0, max: 6 }, // 0 = Sun, 6 = Sat
+    slots: [{ startTime: String, endTime: String }] // e.g., "09:00", "12:00"
   }],
-  sessionDuration: { type: Number, default: 60 }, // in minutes
-  bufferTime: { type: Number, default: 15 } // minutes between sessions
+  overrides: [{
+    date: { type: String }, // "YYYY-MM-DD"
+    slots: [{ startTime: String, endTime: String }],
+    isBlocked: { type: Boolean, default: false }
+  }],
+  sessionDuration: { type: Number, enum: [30, 45, 60, 90], default: 60 },
+  bufferTime: { type: Number, default: 15 }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Availability', availabilitySchema);

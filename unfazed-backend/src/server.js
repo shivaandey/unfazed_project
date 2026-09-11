@@ -1,27 +1,26 @@
-require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const dotenv = require('dotenv');
+
+dotenv.config();
 
 const app = express();
-app.use(express.json());
-app.use(cors());
 
-// Basic health check
-app.get('/api/health', (req, res) => res.status(200).json({ status: 'Unfazed API Running' }));
+// Middleware
+app.use(cors());
+app.use(express.json());
 
 // Database Connection
-app.use('/api/auth', require('./routes/authRoutes'));
-// ... existing imports ...
+mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/unfazed')
+  .then(() => console.log('MongoDB Connected'))
+  .catch(err => console.log('Database Error:', err));
 
+// Routes
 app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/schedule', require('./routes/schedulingRoutes')); // Add this line
+app.use('/api/therapist', require('./routes/therapistRoutes'));
+app.use('/api/schedule', require('./routes/schedulingRoutes'));
+app.use('/api/clients', require('./routes/clientRoutes')); // NEW MODULE 3 ROUTE
 
-// ... existing mongoose connection ...
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
-    console.log('MongoDB Atlas Connected Successfully');
-    const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-  })
-  .catch(err => console.error('Database connection failed:', err));
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
