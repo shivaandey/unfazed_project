@@ -2,6 +2,7 @@ import React, { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axiosInstance from '../../api/axiosInstance';
 import { AuthContext } from '../../context/AuthContext';
+import Footer from '../../components/common/Footer';
 
 export default function Register() {
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
@@ -21,52 +22,100 @@ export default function Register() {
   };
 
   return (
-    <div className="flex min-h-screen bg-white">
-      <div className="flex flex-col justify-center w-full lg:w-1/2 px-8 sm:px-16 animate-slide-up">
-        <div className="max-w-md w-full mx-auto">
-          <h2 className="text-4xl font-extrabold text-gray-900 mb-2">Join Unfazed</h2>
-          <p className="text-gray-500 mb-8">Run your entire private practice from one link.</p>
+    <div className="min-h-screen flex flex-col bg-white font-sans text-gray-800">
+      
+      {/* NAVBAR */}
+      <nav className="flex justify-between items-center px-8 py-4 bg-white shadow-sm sticky top-0 z-50">
+        <div className="flex items-center gap-2">
+          <div className="w-10 h-10 bg-[#F28C28] rounded-full rounded-bl-none flex items-center justify-center text-white font-bold text-xl">U</div>
+          <div className="flex flex-col">
+            <span className="text-2xl font-bold text-[#0B0B45] tracking-widest leading-none">UNFAZED</span>
+            <span className="text-[10px] text-gray-400 tracking-wider">your happy place!</span>
+          </div>
+        </div>
+        <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-700">
+          <a href="#" className="hover:text-[#F28C28] transition-colors">Corporate Resources</a>
+          <a href="#" className="hover:text-[#F28C28] transition-colors">Plans & Pricing</a>
+          <a href="#" className="hover:text-[#F28C28] transition-colors">Our Counselors</a>
+          <a href="#" className="hover:text-[#F28C28] transition-colors">Wellness Hub</a>
+          <a href="#" className="hover:text-[#F28C28] transition-colors">Corporates</a>
+          <div className="flex gap-3 ml-4">
+            <Link to="/register" className="px-6 py-2 bg-[#F28C28] text-white rounded-full hover:bg-orange-600 transition-colors">Sign Up</Link>
+            <Link to="/login" className="px-6 py-2 border border-[#F28C28] text-[#F28C28] rounded-full hover:bg-orange-50 transition-colors">Login</Link>
+          </div>
+        </div>
+      </nav>
+
+      {/* MAIN CONTENT */}
+      <main className="flex-grow flex flex-col items-center pt-16 pb-24 px-4 animate-fade-in">
+        <h2 className="text-4xl font-bold text-[#0B0B45] mb-3 tracking-tight">Sign Up</h2>
+        <p className="text-sm font-medium text-gray-700">
+          Already have an account ? <Link to="/login" className="text-[#F28C28] hover:underline">Log In</Link>
+        </p>
+
+        <div className="flex flex-col md:flex-row items-center justify-center gap-12 md:gap-20 mt-14 w-full max-w-4xl">
           
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && <div className="p-3 bg-red-50 text-red-600 rounded-lg text-sm font-medium">{error}</div>}
+          {/* Left Side: Form */}
+          <form onSubmit={handleSubmit} className="flex-1 w-full max-w-sm space-y-4">
+            {error && <div className="text-red-500 text-sm text-center bg-red-50 p-2 rounded-lg">{error}</div>}
             
-            <div className="space-y-4">
+            <input
+              type="text" required placeholder="Name *"
+              className="w-full px-5 py-3.5 bg-gray-50 border-none rounded-full focus:ring-2 focus:ring-[#F28C28] outline-none text-sm transition-all"
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            />
+            
+            <input
+              type="email" required placeholder="Email *"
+              className="w-full px-5 py-3.5 bg-gray-50 border-none rounded-full focus:ring-2 focus:ring-[#F28C28] outline-none text-sm transition-all"
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            />
+            
+            <div className="flex items-center w-full px-5 py-3.5 bg-gray-50 rounded-full focus-within:ring-2 focus-within:ring-[#F28C28] transition-all">
+              <span className="mr-2 text-lg">🇮🇳</span>
+              <span className="text-gray-400 text-sm mr-2 border-r border-gray-300 pr-2">+91</span>
+              <input type="text" placeholder="081234 56789" className="bg-transparent border-none outline-none text-sm w-full" />
+            </div>
+
+            <div className="relative">
               <input
-                type="text" required placeholder="Full Name (e.g., Dr. Sharma)"
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all outline-none"
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
-              <input
-                type="email" required placeholder="Email Address"
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all outline-none"
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
-              <input
-                type="password" required placeholder="Password (Min 6 chars)"
-                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all outline-none"
+                type="password" required placeholder="Password *"
+                className="w-full px-5 py-3.5 bg-gray-50 border-none rounded-full focus:ring-2 focus:ring-[#F28C28] outline-none text-sm transition-all"
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               />
+              <span className="absolute right-4 top-4 text-gray-400 cursor-pointer">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              </span>
             </div>
-            
-            <button type="submit" className="w-full py-3 px-4 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition-colors shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 duration-200">
-              Create Account
+
+            <button type="submit" className="mt-4 px-8 py-3 bg-[#F28C28] text-white text-sm font-semibold rounded-full hover:bg-orange-600 transition-colors shadow-sm">
+              Sign Up
             </button>
           </form>
-          <p className="mt-6 text-sm text-gray-600 text-center">
-            Already have an account? <Link to="/login" className="text-blue-600 font-semibold hover:underline">Log in</Link>
-          </p>
+
+          {/* Middle: Divider */}
+          <div className="hidden md:block w-px h-64 bg-[#F28C28] opacity-60"></div>
+
+          {/* Right Side: Social Auth */}
+          <div className="flex-1 w-full max-w-sm space-y-4">
+            <button type="button" className="w-full flex items-center justify-center gap-3 px-5 py-3.5 bg-white border border-gray-200 rounded-full shadow-sm hover:bg-gray-50 transition-colors text-sm font-semibold text-gray-700">
+              <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
+              Sign Up with Google
+            </button>
+            <button type="button" className="w-full flex items-center justify-center gap-3 px-5 py-3.5 bg-white border border-gray-200 rounded-full shadow-sm hover:bg-gray-50 transition-colors text-sm font-semibold text-gray-700">
+              <img src="https://www.svgrepo.com/show/475647/facebook-color.svg" alt="Facebook" className="w-5 h-5" />
+              Sign Up with Facebook
+            </button>
+          </div>
+
         </div>
-      </div>
-      
-      {/* UPDATE THIS IMAGE SRC: Provide a serene, professional office or abstract background video/image */}
-      <div className="hidden lg:block lg:w-1/2 bg-gray-100 relative overflow-hidden animate-fade-in">
-        <div className="absolute inset-0 bg-blue-900 opacity-20 z-10"></div>
-        <img 
-          src="https://images.pexels.com/photos/8560049/pexels-photo-8560049.jpeg" 
-          alt="Therapy session" 
-          className="absolute inset-0 w-full h-full object-cover"
-        />
-      </div>
+
+        <div className="mt-20 text-center text-xs text-gray-500 max-w-md">
+          <p>By signing up, you agree to our <a href="#" className="text-[#0B0B45] hover:underline">Terms Of Service</a> and acknowledge that you have read our <a href="#" className="text-[#0B0B45] hover:underline">Privacy Policy</a></p>
+        </div>
+      </main>
+
+      <Footer />
     </div>
   );
 }

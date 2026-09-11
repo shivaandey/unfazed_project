@@ -12,6 +12,12 @@ app.get('/api/health', (req, res) => res.status(200).json({ status: 'Unfazed API
 
 // Database Connection
 app.use('/api/auth', require('./routes/authRoutes'));
+// ... existing imports ...
+
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/schedule', require('./routes/schedulingRoutes')); // Add this line
+
+// ... existing mongoose connection ...
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
     console.log('MongoDB Atlas Connected Successfully');
