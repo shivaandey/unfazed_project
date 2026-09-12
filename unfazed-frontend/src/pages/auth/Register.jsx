@@ -16,8 +16,14 @@ export default function Register() {
     e.preventDefault();
     if (role !== 'therapist') return;
     try {
-      const res = await axiosInstance.post('/auth/register', formData);
-      login(res.data.therapist, res.data.token);
+      const payload = {
+        ...formData,
+        role,
+      };
+
+      const res = await axiosInstance.post('/auth/register', payload);
+      login(res.data, res.data.token);
+      localStorage.setItem('token', res.data.token);
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed.');

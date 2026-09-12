@@ -37,6 +37,12 @@ export default function Sidebar() {
           >
             Clients
           </Link>
+          <Link 
+            to="/analytics" 
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-colors ${isActive('/analytics') ? 'text-[#F28C28] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'}`}
+          >
+            Analytics
+          </Link>
         </nav>
       </div>
       <Link 

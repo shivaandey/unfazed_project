@@ -7,17 +7,23 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const login = (userData, token) => {
+    if (token) {
+      localStorage.setItem('token', token);
+    }
+    setUser(userData);
+  };
+
   useEffect(() => {
     const checkLoggedIn = async () => {
       try {
         const token = localStorage.getItem('token');
         if (token) {
-          // If you have a /auth/me route set up in Module 1, this fetches the active user
           const response = await axiosInstance.get('/auth/me');
           setUser(response.data);
         }
       } catch (error) {
-        console.error("Session expired or invalid token");
+        console.error('Session expired or invalid token');
         localStorage.removeItem('token');
       } finally {
         setLoading(false);
@@ -28,13 +34,13 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const logout = () => {
-    localStorage.removeItem('token'); 
-    setUser(null); 
-    window.location.href = '/'; 
+    localStorage.removeItem('token');
+    setUser(null);
+    window.location.href = '/';
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, logout, loading }}>
+    <AuthContext.Provider value={{ user, setUser, login, logout, loading }}>
       {!loading && children}
     </AuthContext.Provider>
   );

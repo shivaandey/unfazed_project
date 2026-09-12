@@ -1,20 +1,35 @@
-import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import React, { useContext } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
 
-// Auth Pages
 import Login from '../pages/auth/Login';
 import Register from '../pages/auth/Register';
 import ResetPassword from '../pages/auth/ResetPassword';
 
-// Therapist Pages
 import Dashboard from '../pages/therapist/Dashboard';
-import Clients from '../pages/therapist/Clients';
+import Schedule from '../pages/therapist/Schedule';
+import ClientsList from '../pages/therapist/ClientsList';
+import ClientProfile from '../pages/therapist/ClientProfile';
 import Notes from '../pages/therapist/Notes';
+import Analytics from '../pages/therapist/Analytics';
 
-// Client Pages
+import ClientPortal from '../pages/client/ClientPortal';
 import BookingPage from '../pages/client/BookingPage';
-// Assume LandingPage is your main root component
-import LandingPage from '../pages/LandingPage'; 
+import LandingPage from '../pages/LandingPage';
+
+function ProtectedRoute({ children }) {
+  const { user, loading } = useContext(AuthContext);
+
+  if (loading) {
+    return <div className="flex h-screen items-center justify-center text-[#0B0B45] font-bold">Loading...</div>;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
 
 export default function AppRoutes() {
   return (
@@ -23,14 +38,16 @@ export default function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/reset-password" element={<ResetPassword />} />
-      
-      {/* Therapist Dashboard Routes */}
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/clients" element={<Clients />} />
-      <Route path="/notes" element={<Notes />} />
-      
-      {/* Public Client Booking Route (Must be last to avoid catching other paths) */}
-      <Route path="/:slug" element={<BookingPage />} />
+
+      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/schedule" element={<ProtectedRoute><Schedule /></ProtectedRoute>} />
+      <Route path="/clients" element={<ProtectedRoute><ClientsList /></ProtectedRoute>} />
+      <Route path="/clients/:id" element={<ProtectedRoute><ClientProfile /></ProtectedRoute>} />
+      <Route path="/notes" element={<ProtectedRoute><Notes /></ProtectedRoute>} />
+      <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+
+      <Route path="/booking" element={<BookingPage />} />
+      <Route path="/:slug" element={<ClientPortal />} />
     </Routes>
   );
 }
