@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const authMiddleware = require('../middleware/authMiddleware');
+const { protect } = require('../middleware/authMiddleware');
 const { getClients, getClientById, updateIntake } = require('../controllers/clientController');
 
 // All client CRM routes are protected
-router.use(authMiddleware); 
+router.use(protect);
 
 router.get('/', getClients);
 router.get('/:id', getClientById);

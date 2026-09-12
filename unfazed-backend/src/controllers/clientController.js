@@ -4,7 +4,7 @@ const Session = require('../models/Session');
 // Get all clients for a therapist
 exports.getClients = async (req, res) => {
   try {
-    const clients = await Client.find({ therapistId: req.therapist.id }).sort({ updatedAt: -1 });
+    const clients = await Client.find({ therapistId: req.user.id }).sort({ updatedAt: -1 });
     res.status(200).json(clients);
   } catch (error) {
     res.status(500).json({ message: 'Server Error', error: error.message });
@@ -14,7 +14,7 @@ exports.getClients = async (req, res) => {
 // Get a single client's profile & session history
 exports.getClientById = async (req, res) => {
   try {
-    const client = await Client.findOne({ _id: req.params.id, therapistId: req.therapist.id });
+    const client = await Client.findOne({ _id: req.params.id, therapistId: req.user.id });
     if (!client) return res.status(404).json({ message: 'Client not found' });
     
     // Aggregate session history
@@ -37,7 +37,7 @@ exports.updateIntake = async (req, res) => {
     }
     
     const client = await Client.findOneAndUpdate(
-      { _id: req.params.id, therapistId: req.therapist.id },
+      { _id: req.params.id, therapistId: req.user.id },
       { intake },
       { new: true }
     );

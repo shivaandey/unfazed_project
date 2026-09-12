@@ -1,49 +1,96 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { validationResult } = require('express-validator');
 const Therapist = require('../models/Therapist');
-const generateSlug = require('../utils/generateSlug');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+};
 
 exports.register = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
   try {
-    const { name, email, password, bio, specializations, languages } = req.body;
+    const { name, email, password, role } = req.body;
+    
+    const therapistExists = await Therapist.findOne({ email });
+    if (therapistExists) {
+      return res.status(400).json({ message: 'Account already exists with this email' });
+    }
 
-    let therapist = await Therapist.findOne({ email });
-    if (therapist) return res.status(400).json({ message: 'Therapist already exists' });
-
-    const slug = await generateSlug(name);
     const salt = await bcrypt.genSalt(10);
-    const password_hash = await bcrypt.hash(password, salt);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-    therapist = new Therapist({ name, email, password_hash, slug, bio, specializations, languages });
-    await therapist.save();
+    const therapist = await Therapist.create({
+      name,
+      email,
+      password: hashedPassword,
+      role
+    });
 
-    const token = jwt.sign({ id: therapist._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.status(201).json({ token, therapist: { id: therapist._id, name, slug, email } });
+    if (therapist) {
+      res.status(201).json({
+        _id: therapist.id,
+        name: therapist.name,
+        email: therapist.email,
+        role: therapist.role,
+        token: generateToken(therapist._id)
+      });
+    } else {
+      res.status(400).json({ message: 'Invalid data' });
+    }
   } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
+    res.status(500).json({ message: 'Registration error', error: error.message });
   }
 };
 
 exports.login = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
   try {
     const { email, password } = req.body;
-    
     const therapist = await Therapist.findOne({ email });
-    if (!therapist) return res.status(400).json({ message: 'Invalid Credentials' });
 
-    const isMatch = await bcrypt.compare(password, therapist.password_hash);
-    if (!isMatch) return res.status(400).json({ message: 'Invalid Credentials' });
-
-    const token = jwt.sign({ id: therapist._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.status(200).json({ token, therapist: { id: therapist._id, name: therapist.name, slug: therapist.slug } });
+    if (therapist && (await bcrypt.compare(password, therapist.password))) {
+      res.json({
+        _id: therapist.id,
+        name: therapist.name,
+        email: therapist.email,
+        role: therapist.role,
+        token: generateToken(therapist._id)
+      });
+    } else {
+      res.status(401).json({ message: 'Invalid email or password' });
+    }
   } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
+    res.status(500).json({ message: 'Login error', error: error.message });
+  }
+};
+
+exports.getMe = async (req, res) => {
+  try {
+    const therapist = await Therapist.findById(req.user.id).select('-password'); 
+    
+    if (!therapist) {
+      return res.status(404).json({ message: 'Account not found' });
+    }
+    
+    res.status(200).json(therapist);
+  } catch (error) {
+    res.status(500).json({ message: 'Profile fetch error', error: error.message });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+    const therapist = await Therapist.findOne({ email });
+
+    if (!therapist) {
+      return res.status(404).json({ message: 'Therapist not found' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    therapist.password = await bcrypt.hash(newPassword, salt);
+    await therapist.save();
+
+    res.status(200).json({ message: 'Password reset successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Password reset error', error: error.message });
   }
 };

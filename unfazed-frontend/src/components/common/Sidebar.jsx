@@ -39,6 +39,12 @@ export default function Sidebar() {
           </Link>
         </nav>
       </div>
+      <Link 
+        to="/notes" 
+        className={`flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-colors ${isActive('/notes') ? 'text-[#F28C28] bg-orange-50' : 'text-gray-500 hover:bg-gray-50'}`}
+      >
+      Clinical Notes
+      </Link>
       <div className="p-4">
         <button 
           onClick={logout} 

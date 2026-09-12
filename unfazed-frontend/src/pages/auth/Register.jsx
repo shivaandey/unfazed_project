@@ -133,10 +133,7 @@ export default function Register() {
               <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5" />
               Sign Up with Google
             </button>
-            <button type="button" className={`w-full flex items-center justify-center gap-3 px-5 py-3.5 bg-white border border-gray-200 rounded-full shadow-sm hover:bg-gray-50 transition-colors text-sm font-semibold text-gray-700 ${role === 'client' && 'opacity-50 cursor-not-allowed'}`}>
-              <img src="https://www.svgrepo.com/show/475647/facebook-color.svg" alt="Facebook" className="w-5 h-5" />
-              Sign Up with Facebook
-            </button>
+           
           </div>
 
         </div>

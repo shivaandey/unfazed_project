@@ -5,7 +5,8 @@ const Session = require('../models/Session');
 exports.setAvailability = async (req, res) => {
   try {
     const { weeklySchedule, overrides, sessionDuration, bufferTime } = req.body;
-    let availability = await Availability.findOne({ therapistId: req.therapist.id });
+    // Fixed req.therapist to req.user to match authMiddleware
+    let availability = await Availability.findOne({ therapistId: req.user.id });
     
     if (availability) {
       availability.weeklySchedule = weeklySchedule || availability.weeklySchedule;
@@ -14,7 +15,7 @@ exports.setAvailability = async (req, res) => {
       availability.bufferTime = bufferTime || availability.bufferTime;
     } else {
       availability = new Availability({ 
-        therapistId: req.therapist.id, 
+        therapistId: req.user.id, 
         weeklySchedule, 
         overrides, 
         sessionDuration, 
@@ -29,7 +30,7 @@ exports.setAvailability = async (req, res) => {
   }
 };
 
-// 2. Client gets the therapist's availability (This was the missing function!)
+// 2. Client gets the therapist's availability
 exports.getAvailability = async (req, res) => {
   try {
     const { therapistId } = req.params;

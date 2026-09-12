@@ -5,7 +5,7 @@ exports.updateProfile = async (req, res) => {
     const { name, bio, specializations, languages } = req.body;
     
     const updatedTherapist = await Therapist.findByIdAndUpdate(
-      req.therapist.id,
+      req.user.id,
       { name, bio, specializations, languages },
       { new: true, runValidators: true }
     ).select('-password_hash');
