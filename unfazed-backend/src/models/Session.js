@@ -6,8 +6,9 @@ const sessionSchema = new mongoose.Schema({
   clientEmail: { type: String, required: true },
   startTime: { type: Date, required: true },
   endTime: { type: Date, required: true },
-  status: { type: String, enum: ['Scheduled', 'Completed', 'Cancelled', 'Waitlist'], default: 'Scheduled' },
-  type: { type: String, enum: ['Video', 'Audio'], default: 'Video' }
+  status: { type: String, enum: ['Scheduled', 'Completed', 'Cancelled', 'NoShow', 'Waitlist'], default: 'Scheduled' },
+  type: { type: String, enum: ['Video', 'Audio'], default: 'Video' },
+  reminderSentAt: { type: Date, default: null }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Session', sessionSchema);

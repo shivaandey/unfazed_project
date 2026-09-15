@@ -12,6 +12,7 @@ import ClientsList from '../pages/therapist/ClientsList';
 import ClientProfile from '../pages/therapist/ClientProfile';
 import Notes from '../pages/therapist/Notes';
 import Analytics from '../pages/therapist/Analytics';
+import Profile from '../pages/therapist/Profile';
 
 import ClientPortal from '../pages/client/ClientPortal';
 import BookingPage from '../pages/client/BookingPage';
@@ -45,6 +46,7 @@ export default function AppRoutes() {
       <Route path="/clients/:id" element={<ProtectedRoute><ClientProfile /></ProtectedRoute>} />
       <Route path="/notes" element={<ProtectedRoute><Notes /></ProtectedRoute>} />
       <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
       <Route path="/booking" element={<BookingPage />} />
       <Route path="/:slug" element={<ClientPortal />} />

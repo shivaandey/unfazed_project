@@ -1,154 +1,43 @@
 import { useEffect, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
-import { format, addDays } from 'date-fns';
+import { addDays, format } from 'date-fns';
+import { useParams } from 'react-router-dom';
 import axiosInstance from '../../api/axiosInstance';
+import ChatWidget from '../../components/chat/ChatWidget';
 
 export default function ClientPortal() {
   const { slug } = useParams();
-  const [searchParams] = useSearchParams();
   const [therapist, setTherapist] = useState(null);
   const [availability, setAvailability] = useState(null);
-  const [sharedNotes, setSharedNotes] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [form, setForm] = useState({ clientName: '', clientEmail: '', type: 'Video' });
+  const [status, setStatus] = useState('');
+  const dates = Array.from({ length: 14 }, (_, offset) => addDays(new Date(), offset));
 
   useEffect(() => {
-    const fetchTherapist = async () => {
-      try {
-        const therapistRes = await axiosInstance.get(`/therapist/slug/${slug}`);
-        const therapistData = therapistRes.data;
-
-        setTherapist({
-          ...therapistData,
-          heroImageUrl: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=300&auto=format&fit=crop'
-        });
-
-        document.title = `${therapistData.name} | Unfazed Private Practice`;
-        let ogTitle = document.querySelector('meta[property="og:title"]');
-        if (!ogTitle) {
-          ogTitle = document.createElement('meta');
-          ogTitle.setAttribute('property', 'og:title');
-          document.head.appendChild(ogTitle);
-        }
-        ogTitle.setAttribute('content', `${therapistData.name} | Book a Session`);
-
-        let ogDesc = document.querySelector('meta[property="og:description"]');
-        if (!ogDesc) {
-          ogDesc = document.createElement('meta');
-          ogDesc.setAttribute('property', 'og:description');
-          document.head.appendChild(ogDesc);
-        }
-        ogDesc.setAttribute('content', therapistData.bio || 'Book a therapy session with this therapist.');
-
-        const availabilityRes = await axiosInstance.get(`/schedule/availability/${therapistData._id}`);
-        setAvailability(availabilityRes.data);
-      } catch (error) {
-        console.error('Failed to load therapist profile', error);
-      }
-    };
-
-    if (slug) {
-      fetchTherapist();
-    }
+    axiosInstance.get(`/therapist/slug/${slug}`).then(async ({ data }) => {
+      setTherapist(data);
+      const response = await axiosInstance.get(`/schedule/availability/${data._id}`);
+      setAvailability(response.data);
+    }).catch(() => setStatus('This therapist portal could not be loaded.'));
   }, [slug]);
 
-  useEffect(() => {
-    const clientId = searchParams.get('clientId');
-    if (!clientId) return;
+  const loadSlots = async (date) => {
+    try {
+      const response = await axiosInstance.get(`/schedule/availability/${therapist._id}`, { params: { date: format(date, 'yyyy-MM-dd') } });
+      setAvailability(response.data);
+      setSelected(null);
+    } catch (error) { setStatus(error.response?.data?.message || 'Could not load available slots.'); }
+  };
 
-    axiosInstance.get(`/notes/public/shared/${clientId}`)
-      .then((response) => setSharedNotes(response.data))
-      .catch((error) => console.error('Failed to load shared notes', error));
-  }, [searchParams]);
+  const book = async () => {
+    if (!selected || !form.clientName.trim() || !form.clientEmail.trim()) return setStatus('Enter your name and email, then choose a time.');
+    try {
+      await axiosInstance.post('/schedule/book', { therapistId: therapist._id, ...form, ...selected });
+      setStatus('Appointment booked successfully. A confirmation will be sent to your email.');
+      setSelected(null);
+    } catch (error) { setStatus(error.response?.data?.message || 'That slot is no longer available.'); }
+  };
 
-  if (!therapist) return <div className="flex h-screen items-center justify-center animate-pulse">Loading profile...</div>;
-
-  const specializations = therapist.specializations?.length ? therapist.specializations : ['Therapy', 'Wellbeing'];
-
-  return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="bg-[#0B0B45] pt-20 pb-32 px-6">
-        <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center gap-8 animate-slide-up">
-          <img src={therapist.heroImageUrl} alt={therapist.name} className="w-40 h-40 rounded-full border-4 border-white shadow-2xl object-cover" />
-          <div className="text-center md:text-left text-white">
-            <h1 className="text-4xl font-bold mb-3">{therapist.name}</h1>
-            <p className="text-gray-300 max-w-2xl text-lg">{therapist.bio || 'Therapist profile details are available to book sessions.'}</p>
-            <div className="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
-              {specializations.map((spec, i) => (
-                <span key={i} className="px-3 py-1 bg-white/10 text-white rounded-full text-sm font-medium">{spec}</span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-4xl mx-auto px-6 -mt-16 relative z-10 animate-fade-in">
-        {searchParams.get('clientId') && (
-          <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-gray-100">
-            <h2 className="text-2xl font-bold text-[#0B0B45] mb-6 border-b pb-4">Shared session notes</h2>
-            {sharedNotes.length ? sharedNotes.map((note) => (
-              <article key={note.id} className="border-b border-gray-100 py-5 last:border-0">
-                <div className="flex justify-between gap-4">
-                  <h3 className="font-bold text-gray-800">{note.templateType.toUpperCase()} note</h3>
-                  <time className="text-sm text-gray-500">{format(new Date(note.updatedAt), 'MMM d, yyyy')}</time>
-                </div>
-                {note.templateType === 'soap' && <p className="mt-2 whitespace-pre-wrap text-gray-600">{note.soap?.assessment || note.soap?.plan || 'Shared SOAP note'}</p>}
-                {note.templateType === 'dap' && <p className="mt-2 whitespace-pre-wrap text-gray-600">{note.dap?.assessment || note.dap?.plan || 'Shared DAP note'}</p>}
-                {note.templateType === 'freeform' && <p className="mt-2 whitespace-pre-wrap text-gray-600">{new DOMParser().parseFromString(note.content || '', 'text/html').body.textContent}</p>}
-              </article>
-            )) : <p className="text-gray-500">No shared notes are available yet.</p>}
-          </div>
-        )}
-
-        <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 border border-gray-100">
-          <h2 className="text-2xl font-bold text-[#0B0B45] mb-6 border-b pb-4">Available Services</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="border border-gray-200 p-6 rounded-xl hover:border-[#F28C28] transition-colors cursor-pointer">
-              <h3 className="font-bold text-lg text-gray-800">Video Consultation</h3>
-              <p className="text-gray-500 text-sm mt-2 mb-4">60 Min • Private Video Call</p>
-              <button className="w-full py-2 bg-[#F28C28] text-white rounded-lg font-medium hover:bg-orange-600 transition-colors">Select</button>
-            </div>
-            <div className="border border-gray-200 p-6 rounded-xl hover:border-[#F28C28] transition-colors cursor-pointer">
-              <h3 className="font-bold text-lg text-gray-800">Audio Consultation</h3>
-              <p className="text-gray-500 text-sm mt-2 mb-4">45 Min • Voice Only</p>
-              <button className="w-full py-2 border border-[#F28C28] text-[#F28C28] rounded-lg font-medium hover:bg-orange-50 transition-colors">Select</button>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-          <div className="flex justify-between items-center border-b pb-4 mb-6">
-            <h2 className="text-2xl font-bold text-[#0B0B45]">Book a Session</h2>
-            <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full font-medium">
-              Timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[0, 1, 2, 3].map((offset) => {
-              const date = addDays(new Date(), offset);
-              return (
-                <div key={offset} className="border border-gray-200 rounded-xl p-4 text-center hover:border-[#F28C28] transition-colors cursor-pointer group">
-                  <p className="font-bold text-[#0B0B45] mb-2">{format(date, 'EEE, MMM d')}</p>
-                  <div className="space-y-2">
-                    {availability?.weeklySchedule?.length ? (
-                      availability.weeklySchedule.slice(0, 3).map((slotGroup, idx) => (
-                        <button key={idx} className="w-full py-1.5 text-sm bg-orange-50 text-[#F28C28] rounded font-medium hover:bg-[#F28C28] hover:text-white transition-colors">
-                          {slotGroup.slots?.[0]?.startTime || 'Available'}
-                        </button>
-                      ))
-                    ) : (
-                      <>
-                        <button className="w-full py-1.5 text-sm bg-orange-50 text-[#F28C28] rounded font-medium hover:bg-[#F28C28] hover:text-white transition-colors">09:00 AM</button>
-                        <button className="w-full py-1.5 text-sm bg-orange-50 text-[#F28C28] rounded font-medium hover:bg-[#F28C28] hover:text-white transition-colors">11:00 AM</button>
-                        <button className="w-full py-1.5 text-sm bg-gray-100 text-gray-400 rounded font-medium cursor-not-allowed">02:00 PM (Full)</button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  if (!therapist) return <div className="flex min-h-screen items-center justify-center">{status || 'Loading profile...'}</div>;
+  return <div className="min-h-screen bg-gray-50 pb-20"><header className="bg-[#0B0B45] px-6 py-16 text-white"><div className="mx-auto max-w-4xl"><h1 className="text-4xl font-bold">{therapist.name}</h1><p className="mt-3 max-w-2xl text-gray-300">{therapist.bio || 'Book a private therapy session.'}</p></div></header><main className="mx-auto max-w-4xl px-6 py-8"><section className="rounded-2xl border border-gray-100 bg-white p-8 shadow-sm"><h2 className="mb-6 text-2xl font-bold text-[#0B0B45]">Choose a date and time</h2><div className="flex gap-2 overflow-x-auto pb-4">{dates.map((date) => <button key={date.toISOString()} onClick={() => loadSlots(date)} className="min-w-24 rounded-xl border border-gray-200 p-3 text-sm hover:border-[#F28C28]"><strong>{format(date, 'EEE')}</strong><br />{format(date, 'MMM d')}</button>)}</div><div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">{(availability?.slots || []).map((slot) => <button key={slot.startTime} onClick={() => setSelected(slot)} className={`rounded-lg border p-3 text-sm ${selected?.startTime === slot.startTime ? 'border-[#F28C28] bg-orange-50' : 'border-gray-200'}`}>{new Date(slot.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</button>)}{availability?.slots?.length === 0 && <p className="col-span-full text-gray-500">No available times for this date.</p>}</div></section><section className="mt-6 rounded-2xl border border-gray-100 bg-white p-8 shadow-sm"><h2 className="mb-6 text-2xl font-bold text-[#0B0B45]">Your details</h2><div className="grid gap-4 md:grid-cols-2"><input placeholder="Full name" value={form.clientName} onChange={(event) => setForm({ ...form, clientName: event.target.value })} className="rounded-lg border p-3" /><input type="email" placeholder="Email address" value={form.clientEmail} onChange={(event) => setForm({ ...form, clientEmail: event.target.value })} className="rounded-lg border p-3" /><select value={form.type} onChange={(event) => setForm({ ...form, type: event.target.value })} className="rounded-lg border p-3"><option value="Video">Video consultation</option><option value="Audio">Audio consultation</option></select></div><button onClick={book} className="mt-6 w-full rounded-xl bg-[#F28C28] py-3 font-bold text-white">{selected ? 'Confirm appointment' : 'Choose a time first'}</button>{status && <p className="mt-4 text-sm font-semibold text-[#0B0B45]">{status}</p>}</section><ChatWidget therapistId={therapist._id} /></main></div>;
 }

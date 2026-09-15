@@ -1,4 +1,14 @@
 const { notify } = require('../services/notificationService');
+const ChatMessage = require('../models/ChatMessage');
+
+exports.getMessages = async (req, res) => {
+  try {
+    const messages = await ChatMessage.find({ roomId: req.params.roomId }).sort({ createdAt: 1 }).limit(200);
+    res.json(messages);
+  } catch (error) {
+    res.status(500).json({ message: 'Could not load chat history', error: error.message });
+  }
+};
 
 exports.sendChatNotification = async (req, res) => {
   try {

@@ -45,6 +45,8 @@ exports.register = async (req, res) => {
         name: therapist.name,
         email: therapist.email,
         role: therapist.role,
+        tier: therapist.tier,
+        subscriptionTier: therapist.subscriptionTier,
         slug: therapist.slug,
         token: generateToken(therapist._id)
       });
@@ -87,6 +89,8 @@ exports.login = async (req, res) => {
       name: therapist.name,
       email: therapist.email,
       role: therapist.role,
+      tier: therapist.tier,
+      subscriptionTier: therapist.subscriptionTier,
       slug: therapist.slug,
       token: generateToken(therapist._id)
     });

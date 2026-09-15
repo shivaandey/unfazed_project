@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import Sidebar from '../../components/common/Sidebar';
 import axiosInstance from '../../api/axiosInstance';
+import NotificationBell from '../../components/common/NotificationBell';
 
 export default function Dashboard() {
   const { user } = useContext(AuthContext);
@@ -39,10 +40,11 @@ export default function Dashboard() {
           <h2 className="text-2xl font-bold text-[#0B0B45]">
             Good morning, {user?.name || 'Therapist'}
           </h2>
-          <div className="flex gap-4">
-            <button className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
+          <div className="flex gap-4 items-center">
+            <NotificationBell />
+            <Link to="/profile" className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">
               Edit Profile
-            </button>
+            </Link>
             {user?.slug ? (
               <Link
                 to={`/${user.slug}`}

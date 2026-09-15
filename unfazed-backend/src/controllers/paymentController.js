@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const Payment = require('../models/Payment');
 const Package = require('../models/Package');
 const { generateInvoicePDF } = require('../services/invoiceService');
+const domainEvents = require('../services/domainEvents');
 
 // 1. Create Order at Checkout
 exports.createOrder = async (req, res) => {
@@ -69,6 +70,7 @@ exports.verifyPaymentClient = async (req, res) => {
         payment.invoice_url = invoicePath;
         
         await payment.save();
+        domainEvents.emit('payment.completed', { payment });
         
         // If it's a package, generate the tracking record
         if (payment.packageType !== 'Single') {

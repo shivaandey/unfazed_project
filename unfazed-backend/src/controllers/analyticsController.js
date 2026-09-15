@@ -1,9 +1,11 @@
 const Session = require('../models/Session');
 const Payment = require('../models/Payment');
+const Client = require('../models/Client');
+const mongoose = require('mongoose');
 
 exports.getDashboardAnalytics = async (req, res) => {
   try {
-    const therapistId = req.user.id;
+    const therapistId = new mongoose.Types.ObjectId(req.user.id);
 
     const [sessionStats, paymentStats, revenueTrend, activeClientStats] = await Promise.all([
       Session.aggregate([
@@ -15,7 +17,7 @@ exports.getDashboardAnalytics = async (req, res) => {
         {
           $group: {
             _id: null,
-            revenue: { $sum: '$net_amount' },
+            revenue: { $sum: { $ifNull: ['$net_amount', '$total_amount'] } },
             payments: { $sum: 1 }
           }
         }
@@ -25,15 +27,14 @@ exports.getDashboardAnalytics = async (req, res) => {
         {
           $group: {
             _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
-            revenue: { $sum: '$net_amount' },
+            revenue: { $sum: { $ifNull: ['$net_amount', '$total_amount'] } },
             payments: { $sum: 1 }
           }
         },
         { $sort: { _id: 1 } }
       ]),
-      Session.aggregate([
-        { $match: { therapistId } },
-        { $group: { _id: '$clientEmail', count: { $sum: 1 } } },
+      Client.aggregate([
+        { $match: { therapistId, status: 'Active' } },
         { $count: 'activeClients' }
       ])
     ]);
@@ -43,7 +44,8 @@ exports.getDashboardAnalytics = async (req, res) => {
     const completed = sessionStats.find((item) => item._id === 'Completed')?.count || 0;
     const cancelled = sessionStats.find((item) => item._id === 'Cancelled')?.count || 0;
     const waitlist = sessionStats.find((item) => item._id === 'Waitlist')?.count || 0;
-    const noShowRate = totalSessions > 0 ? ((cancelled / totalSessions) * 100).toFixed(2) : 0;
+    const noShows = sessionStats.find((item) => item._id === 'NoShow')?.count || 0;
+    const noShowRate = totalSessions > 0 ? ((noShows / totalSessions) * 100).toFixed(2) : 0;
 
     const summary = {
       totalSessions,
@@ -51,6 +53,7 @@ exports.getDashboardAnalytics = async (req, res) => {
       completed,
       waitlist,
       cancelled,
+      noShows,
       noShowRate: Number(noShowRate),
       activeClients: activeClientStats[0]?.activeClients || 0,
       revenue: paymentStats[0]?.revenue || 0,

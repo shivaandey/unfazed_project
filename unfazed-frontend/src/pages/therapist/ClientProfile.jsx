@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
+import { AuthContext } from '../../context/AuthContext';
+import ChatWidget from '../../components/chat/ChatWidget';
 
 export default function ClientProfile() {
   const { id } = useParams();
+  const { user } = useContext(AuthContext);
   const [activeTab, setActiveTab] = useState('overview');
   
   // React Hook Form for Intake & Consent
@@ -94,6 +97,7 @@ export default function ClientProfile() {
             )}
           </div>
         </div>
+        <ChatWidget therapistId={user?._id} clientId={id} role="therapist" name={user?.name || 'Therapist'} />
       </main>
     </div>
   );

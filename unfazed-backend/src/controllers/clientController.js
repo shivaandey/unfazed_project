@@ -1,5 +1,6 @@
 const Client = require('../models/Client');
 const Session = require('../models/Session');
+const { canAccess } = require('../services/entitlementService');
 
 // Get all clients for a therapist
 exports.getClients = async (req, res) => {
@@ -45,5 +46,20 @@ exports.updateIntake = async (req, res) => {
     res.status(200).json(client);
   } catch (error) {
     res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+};
+
+exports.createClient = async (req, res) => {
+  try {
+    const activeClientCount = await Client.countDocuments({ therapistId: req.user.id, status: 'Active' });
+    if (!await canAccess(req.user.id, 'active-client-cap', { activeClientCount })) {
+      return res.status(403).json({ message: 'Active client limit reached for your plan.', featureKey: 'active-client-cap', upgradeRequired: true });
+    }
+    const { name, email, phone, tags } = req.body;
+    if (!name || !email) return res.status(400).json({ message: 'Name and email are required' });
+    const client = await Client.create({ therapistId: req.user.id, name, email: email.toLowerCase(), phone, tags });
+    res.status(201).json(client);
+  } catch (error) {
+    res.status(500).json({ message: 'Could not create client', error: error.message });
   }
 };

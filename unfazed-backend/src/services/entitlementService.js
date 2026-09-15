@@ -1,58 +1,33 @@
 const SubscriptionTierConfig = require('../models/SubscriptionTierConfig');
 const Therapist = require('../models/Therapist');
 
-const defaultConfigs = {
-  starter: {
-    activeClientCap: 25,
-    analyticsDepth: 'basic',
-    noteTemplateTypes: ['soap'],
-    chatEnabled: true,
-    customBranding: false
-  },
-  pro: {
-    activeClientCap: 100,
-    analyticsDepth: 'advanced',
-    noteTemplateTypes: ['soap', 'dap', 'freeform'],
-    chatEnabled: true,
-    customBranding: true
-  }
+const getTierConfig = async (therapistId) => {
+  const therapist = await Therapist.findById(therapistId).select('tier subscriptionTier');
+  const tierName = (therapist?.tier || therapist?.subscriptionTier || 'starter').toLowerCase();
+  const config = await SubscriptionTierConfig.findOne({ tierName });
+  if (!config) throw new Error(`Subscription tier configuration missing: ${tierName}`);
+  return config;
 };
 
-exports.getTierConfig = async (therapistId, tierName = 'pro') => {
-  if (therapistId) {
-    const therapist = await Therapist.findById(therapistId).select('tier subscriptionTier');
-    const resolvedTier = (therapist?.tier || therapist?.subscriptionTier || tierName || 'pro').toLowerCase();
-    const config = await SubscriptionTierConfig.findOne({ tierName: resolvedTier });
-    if (config) {
-      return config.features;
-    }
-    return defaultConfigs[resolvedTier] || defaultConfigs.pro;
-  }
+exports.canAccess = async (therapistId, featureKey, context = {}) => {
+  const config = await getTierConfig(therapistId);
+  const features = config.features || {};
+  const [key, requestedTemplate] = featureKey.split(':');
 
-  const resolvedTier = (tierName || 'pro').toLowerCase();
-  const config = await SubscriptionTierConfig.findOne({ tierName: resolvedTier });
-  if (config) {
-    return config.features;
-  }
-
-  return defaultConfigs[resolvedTier] || defaultConfigs.pro;
-};
-
-exports.canAccess = async (therapistId, featureKey, tierName = 'pro') => {
-  const features = await exports.getTierConfig(therapistId, tierName);
-
-  switch (featureKey) {
+  switch (key) {
     case 'active-client-cap':
-      return Number(features.activeClientCap || 25) > 0;
-    case 'analytics-depth':
-      return (features.analyticsDepth || 'basic') === 'advanced';
+      return Number(context.activeClientCount || 0) < Number(features.activeClientCap);
     case 'note-template-type':
-      return (features.noteTemplateTypes || ['soap']).includes('dap') || (features.noteTemplateTypes || ['soap']).includes('soap') || (features.noteTemplateTypes || ['soap']).includes('freeform');
+      return (features.noteTemplateTypes || []).includes(requestedTemplate || context.templateType || 'soap');
+    case 'analytics-depth':
+      return features.analyticsDepth === (context.depth || 'advanced');
     case 'chat':
-      return features.chatEnabled !== false;
+      return features.chatEnabled === true;
     case 'branding':
-      return Boolean(features.customBranding);
+      return features.customBranding === true;
     default:
-      return true;
+      return false;
   }
 };
+
+exports.getTierConfig = getTierConfig;

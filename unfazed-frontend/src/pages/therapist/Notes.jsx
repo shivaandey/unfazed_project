@@ -14,6 +14,7 @@ export default function Notes() {
   const [dap, setDap] = useState({ data: '', assessment: '', plan: '' });
   const [freeform, setFreeform] = useState('');
   const [status, setStatus] = useState('');
+  const [blockedFeature, setBlockedFeature] = useState('');
 
   const editor = useEditor({
     extensions: [StarterKit],
@@ -57,7 +58,9 @@ export default function Notes() {
         isLocked
       });
       setStatus(isLocked ? 'Note locked and finalized.' : 'Draft saved.');
+      setBlockedFeature('');
     } catch (error) {
+      if (error.response?.status === 403 && error.response?.data?.upgradeRequired) setBlockedFeature(error.response.data.featureKey);
       setStatus(error.response?.data?.message || 'Unable to save note.');
     }
   };
@@ -153,7 +156,7 @@ export default function Notes() {
             </div>
           )}
 
-          <UpgradePrompt featureKey="note-template-type" currentTier="starter" />
+          {blockedFeature && <UpgradePrompt featureKey={blockedFeature} />}
 
           <div className="mt-8 flex gap-4 border-t pt-6">
             <button onClick={() => handleSave(false)} className="px-6 py-3 border-2 border-[#0B0B45] text-[#0B0B45] font-bold rounded-lg hover:bg-gray-50 transition-colors">

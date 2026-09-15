@@ -1,80 +1,60 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
 import axiosInstance from '../../api/axiosInstance';
 import Sidebar from '../../components/common/Sidebar';
+
+const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const emptySchedule = days.map((_, dayOfWeek) => ({ dayOfWeek, slots: [] }));
 
 export default function Schedule() {
   const [duration, setDuration] = useState(60);
   const [buffer, setBuffer] = useState(15);
-  
-  const handleSaveAvailability = async () => {
-    // Stubbing a standard Mon-Fri 9-5 schedule for Module 2
-    const payload = {
-      sessionDuration: duration,
-      bufferTime: buffer,
-      weeklySchedule: [1, 2, 3, 4, 5].map(day => ({
-        dayOfWeek: day,
-        slots: [{ startTime: "09:00", endTime: "17:00" }]
-      }))
-    };
+  const [weeklySchedule, setWeeklySchedule] = useState(emptySchedule);
+  const [appointments, setAppointments] = useState([]);
+  const [status, setStatus] = useState('');
+
+  const load = async () => {
     try {
-      await axiosInstance.post('/schedule/availability', payload);
-      alert('Availability saved successfully!');
-    } catch (err) {
-      alert('Failed to save availability. Please check your backend connection.');
+      const [availability, appointmentResponse] = await Promise.all([
+        axiosInstance.get('/schedule/availability/me').catch(() => ({ data: null })),
+        axiosInstance.get('/schedule/appointments')
+      ]);
+      if (availability.data) {
+        setDuration(availability.data.sessionDuration);
+        setBuffer(availability.data.bufferTime);
+        setWeeklySchedule(availability.data.weeklySchedule?.length ? days.map((_, dayOfWeek) => availability.data.weeklySchedule.find((item) => item.dayOfWeek === dayOfWeek) || { dayOfWeek, slots: [] }) : emptySchedule);
+      }
+      setAppointments(appointmentResponse.data);
+    } catch (error) {
+      setStatus(error.response?.data?.message || 'Unable to load appointments.');
     }
   };
 
-  return (
-    <div className="flex h-screen bg-[#F8FAFC]">
-      
-      {/* Integrated Sidebar Component */}
-      <Sidebar />
-      
-      <main className="flex-1 p-8 overflow-y-auto animate-fade-in">
-        <header className="mb-8">
-          <h2 className="text-3xl font-bold text-[#0B0B45]">Manage Availability</h2>
-          <p className="text-gray-500 mt-1">Set your session durations and weekly working hours.</p>
-        </header>
-        
-        <div className="bg-white p-8 rounded-2xl shadow-sm max-w-2xl border border-gray-100">
-          <h3 className="text-xl font-bold text-[#0B0B45] mb-6 border-b pb-4">Session Settings</h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Session Duration</label>
-              <select 
-                value={duration} 
-                onChange={(e) => setDuration(Number(e.target.value))} 
-                className="w-full border border-gray-200 rounded-xl p-3.5 bg-gray-50 focus:ring-2 focus:ring-[#F28C28] outline-none transition-all"
-              >
-                <option value={30}>30 Minutes</option>
-                <option value={45}>45 Minutes</option>
-                <option value={60}>60 Minutes</option>
-                <option value={90}>90 Minutes</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Buffer Time</label>
-              <select 
-                value={buffer} 
-                onChange={(e) => setBuffer(Number(e.target.value))} 
-                className="w-full border border-gray-200 rounded-xl p-3.5 bg-gray-50 focus:ring-2 focus:ring-[#F28C28] outline-none transition-all"
-              >
-                <option value={0}>No Buffer</option>
-                <option value={15}>15 Minutes (Recommended)</option>
-                <option value={30}>30 Minutes</option>
-              </select>
-            </div>
-          </div>
-          
-          <button 
-            onClick={handleSaveAvailability} 
-            className="w-full py-3.5 bg-[#F28C28] text-white font-bold rounded-xl hover:bg-orange-600 transition-colors shadow-sm"
-          >
-            Save Weekly Template
-          </button>
-        </div>
-      </main>
-    </div>
-  );
+  useEffect(() => { load(); }, []);
+
+  const updateDay = (dayOfWeek, field, value) => setWeeklySchedule((current) => current.map((day) => day.dayOfWeek === dayOfWeek ? { ...day, slots: [{ ...(day.slots[0] || {}), [field]: value }] } : day));
+
+  const saveAvailability = async () => {
+    try {
+      await axiosInstance.post('/schedule/availability', { sessionDuration: duration, bufferTime: buffer, weeklySchedule: weeklySchedule.filter((day) => day.slots[0]?.startTime && day.slots[0]?.endTime) });
+      setStatus('Availability saved successfully.');
+    } catch (error) { setStatus(error.response?.data?.message || 'Failed to save availability.'); }
+  };
+
+  const updateStatus = async (id, nextStatus) => {
+    try {
+      await axiosInstance.patch(`/schedule/sessions/${id}/status`, { status: nextStatus });
+      setAppointments((current) => current.map((appointment) => appointment._id === id ? { ...appointment, status: nextStatus } : appointment));
+    } catch (error) { setStatus(error.response?.data?.message || 'Could not update appointment.'); }
+  };
+
+  return <div className="flex min-h-screen bg-[#F8FAFC]"><Sidebar /><main className="flex-1 p-8 overflow-y-auto">
+    <header className="mb-8"><h2 className="text-3xl font-bold text-[#0B0B45]">Appointments</h2><p className="text-gray-500 mt-1">Set availability and manage scheduled sessions.</p></header>
+    <section className="mb-8 max-w-4xl rounded-2xl border border-gray-100 bg-white p-8 shadow-sm">
+      <h3 className="mb-6 border-b pb-4 text-xl font-bold text-[#0B0B45]">Availability settings</h3>
+      <div className="mb-6 grid grid-cols-1 gap-6 md:grid-cols-2"><label className="text-sm font-bold text-gray-700">Session duration<select value={duration} onChange={(event) => setDuration(Number(event.target.value))} className="mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 p-3"><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60">60 minutes</option><option value="90">90 minutes</option></select></label><label className="text-sm font-bold text-gray-700">Buffer time<select value={buffer} onChange={(event) => setBuffer(Number(event.target.value))} className="mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 p-3"><option value="0">No buffer</option><option value="15">15 minutes</option><option value="30">30 minutes</option></select></label></div>
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">{weeklySchedule.map((day) => <div key={day.dayOfWeek} className="flex items-center gap-3 rounded-lg bg-gray-50 p-3"><span className="w-28 text-sm font-semibold">{days[day.dayOfWeek]}</span><input type="time" value={day.slots[0]?.startTime || ''} onChange={(event) => updateDay(day.dayOfWeek, 'startTime', event.target.value)} className="rounded border p-2" /><span>-</span><input type="time" value={day.slots[0]?.endTime || ''} onChange={(event) => updateDay(day.dayOfWeek, 'endTime', event.target.value)} className="rounded border p-2" /></div>)}</div>
+      <button onClick={saveAvailability} className="mt-6 w-full rounded-xl bg-[#F28C28] py-3 font-bold text-white">Save availability</button>
+    </section>
+    <section className="max-w-5xl rounded-2xl border border-gray-100 bg-white p-8 shadow-sm"><h3 className="mb-6 border-b pb-4 text-xl font-bold text-[#0B0B45]">Appointment list</h3>{appointments.length === 0 ? <p className="text-gray-500">No appointments found.</p> : <div className="space-y-3">{appointments.map((appointment) => <div key={appointment._id} className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-gray-100 p-4"><div><p className="font-bold text-[#0B0B45]">{appointment.clientName}</p><p className="text-sm text-gray-500">{appointment.clientEmail} · {new Date(appointment.startTime).toLocaleString()} · {appointment.type}</p></div><div className="flex items-center gap-2"><span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold">{appointment.status}</span>{appointment.status === 'Scheduled' && <><button onClick={() => updateStatus(appointment._id, 'Completed')} className="rounded-lg bg-green-600 px-3 py-2 text-xs font-bold text-white">Complete</button><button onClick={() => updateStatus(appointment._id, 'NoShow')} className="rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-white">No-show</button><button onClick={() => updateStatus(appointment._id, 'Cancelled')} className="rounded-lg bg-red-600 px-3 py-2 text-xs font-bold text-white">Cancel</button></>}</div></div>)}</div>}{status && <p className="mt-4 text-sm font-semibold text-[#0B0B45]">{status}</p>}</section>
+  </main></div>;
 }
