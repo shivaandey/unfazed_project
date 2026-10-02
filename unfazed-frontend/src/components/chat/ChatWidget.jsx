@@ -10,30 +10,37 @@ const getClientId = (therapistId) => {
   return id;
 };
 
-export default function ChatWidget({ therapistId, clientId, role = 'client', name = 'Client' }) {
+export default function ChatWidget({ therapistId, clientId, clientEmail, role = 'client', name = 'Client' }) {
   const resolvedClientId = clientId || getClientId(therapistId);
-  const roomId = [therapistId, resolvedClientId].sort().join('-');
+  const resolvedEmail = (clientEmail || '').trim().toLowerCase();
+  const roomKey = resolvedEmail || resolvedClientId;
+  const roomId = [String(therapistId), String(roomKey)].sort().join('-');
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [connectionError, setConnectionError] = useState('');
   const endRef = useRef(null);
 
   useEffect(() => {
     const handleHistory = (history) => setMessages(history);
     const handleMessage = (message) => setMessages((prev) => [...prev, message]);
     const handleTyping = ({ sender, isTyping: typing }) => sender !== role && setIsTyping(typing);
-    socket.emit('join-room', { therapistId, clientId: resolvedClientId, role, name });
+    const handleRoomError = ({ message }) => setConnectionError(message);
+
+    socket.emit('join-room', { therapistId, clientId: resolvedClientId, clientEmail: resolvedEmail, role, name });
     socket.emit('mark-read');
     socket.on('chat-history', handleHistory);
     socket.on('receive-message', handleMessage);
     socket.on('typing-status', handleTyping);
+    socket.on('room-error', handleRoomError);
 
     return () => {
       socket.off('chat-history', handleHistory);
       socket.off('receive-message', handleMessage);
       socket.off('typing-status', handleTyping);
+      socket.off('room-error', handleRoomError);
     };
-  }, [therapistId, resolvedClientId, role, name]);
+  }, [therapistId, resolvedClientId, resolvedEmail, role, name]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -53,6 +60,8 @@ export default function ChatWidget({ therapistId, clientId, role = 'client', nam
         <h3 className="text-lg font-bold text-[#0B0B45]">Message therapist</h3>
         <span className="text-xs text-gray-500">{isTyping ? 'Typing…' : 'Online'}</span>
       </div>
+
+      {connectionError && <p className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{connectionError}</p>}
 
       <div className="h-64 space-y-3 overflow-y-auto rounded-xl border border-gray-100 bg-gray-50 p-3">
         {messages.map((msg) => (

@@ -1,7 +1,31 @@
 const Availability = require('../models/Availability');
+const Client = require('../models/Client');
 const Session = require('../models/Session');
 const Therapist = require('../models/Therapist');
 const domainEvents = require('../services/domainEvents');
+
+const syncClientRoster = async ({ therapistId, clientName, clientEmail }) => {
+  const normalizedEmail = String(clientEmail || '').trim().toLowerCase();
+  if (!therapistId || !normalizedEmail) return null;
+
+  return Client.findOneAndUpdate(
+    { therapistId, email: normalizedEmail },
+    {
+      $set: {
+        therapistId,
+        name: clientName?.trim() || 'Client',
+        email: normalizedEmail,
+        status: 'Active',
+      },
+      $addToSet: { tags: 'Booked' },
+    },
+    {
+      upsert: true,
+      new: true,
+      setDefaultsOnInsert: true,
+    }
+  );
+};
 
 const getDaySlots = (availability, date) => {
   const dateKey = date.toISOString().slice(0, 10);
@@ -110,21 +134,19 @@ exports.bookSession = async (req, res) => {
     }
 
     const session = new Session({
-      therapistId, clientName, clientEmail, startTime, endTime, type, 
+      therapistId, clientName, clientEmail, startTime, endTime, type,
       status: isWaitlist ? 'Waitlist' : 'Scheduled'
     });
 
     await session.save();
+    await syncClientRoster({ therapistId, clientName, clientEmail });
 
     if (!isWaitlist) {
       const therapist = await Therapist.findById(therapistId).select('name');
       domainEvents.emit('booking.confirmed', { session, therapistName: therapist?.name || 'your therapist' });
-    }
-    
-    if (!isWaitlist) {
-      console.log(`[STUB] Notification sent to ${clientEmail} for booking confirmation.`);
+      console.log(`[BOOKING] ${clientEmail} has been added to the roster and scheduled.`);
     } else {
-      console.log(`[STUB] ${clientEmail} added to waitlist. Will auto-notify if slot frees.`);
+      console.log(`[WAITLIST] ${clientEmail} was added to waitlist and roster.`);
     }
 
     res.status(201).json(session);

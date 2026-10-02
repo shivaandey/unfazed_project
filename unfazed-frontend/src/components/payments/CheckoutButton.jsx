@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axiosInstance from '../../api/axiosInstance';
 
-export default function CheckoutButton({ amount, packageType, clientId, therapistId }) {
+export default function CheckoutButton({ amount, packageType, clientId, therapistId, onSuccess }) {
   const [loading, setLoading] = useState(false);
 
   const loadRazorpayScript = () => {
@@ -15,6 +15,17 @@ export default function CheckoutButton({ amount, packageType, clientId, therapis
   };
 
   const handlePayment = async () => {
+    if (!clientId || !therapistId) {
+      alert('Payment setup is incomplete. This checkout requires a valid client and therapist ID.');
+      return;
+    }
+
+    const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
+    if (!razorpayKey) {
+      alert('Razorpay is not configured yet. Add VITE_RAZORPAY_KEY_ID to your frontend environment.');
+      return;
+    }
+
     setLoading(true);
     const res = await loadRazorpayScript();
 
@@ -29,11 +40,11 @@ export default function CheckoutButton({ amount, packageType, clientId, therapis
         amount,
         packageType,
         clientId,
-        therapistId
+        therapistId,
       });
 
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        key: razorpayKey,
         amount: orderData.data.amount,
         currency: orderData.data.currency,
         name: 'Unfazed Therapy',
@@ -44,22 +55,31 @@ export default function CheckoutButton({ amount, packageType, clientId, therapis
             const verifyRes = await axiosInstance.post('/payments/verify-client', {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature
+              razorpay_signature: response.razorpay_signature,
             });
-            alert('Payment Successful! Invoice generated.');
-            console.log(verifyRes.data);
+
+            if (onSuccess) {
+              onSuccess(verifyRes.data.payment);
+            } else {
+              alert('Payment successful! Invoice generated.');
+            }
           } catch (err) {
             alert('Payment verification failed.');
           }
         },
-        theme: { color: '#0B0B45' }
+        theme: { color: '#0B0B45' },
+        prefill: {},
       };
 
       const paymentObject = new window.Razorpay(options);
+      paymentObject.on('payment.failed', function (response) {
+        console.error('Razorpay payment failed:', response.error);
+        alert(`Payment failed: ${response.error.description || 'Try again.'}`);
+      });
       paymentObject.open();
     } catch (error) {
       console.error('Checkout error:', error);
-      alert('Could not initiate checkout.');
+      alert('Could not initiate checkout. Please check your payment configuration.');
     } finally {
       setLoading(false);
     }

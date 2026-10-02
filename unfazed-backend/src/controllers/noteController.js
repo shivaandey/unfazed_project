@@ -105,6 +105,25 @@ exports.saveNote = async (req, res) => {
   }
 };
 
+exports.deleteNote = async (req, res) => {
+  try {
+    const note = await SessionNote.findOne({ _id: req.params.noteId, therapistId: req.user.id });
+
+    if (!note) {
+      return res.status(404).json({ message: 'Note not found.' });
+    }
+
+    if (note.isLocked) {
+      return res.status(403).json({ message: 'Cannot delete a locked note.' });
+    }
+
+    await note.deleteOne();
+    return res.status(200).json({ message: 'Draft deleted successfully.' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+};
+
 exports.getPublicSharedNotes = async (req, res) => {
   try {
     const notes = await SessionNote.find({

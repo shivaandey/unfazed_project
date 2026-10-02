@@ -12,11 +12,25 @@ export default function BookingPage() {
     '12-Pack': 15000,
   };
 
+  const params = new URLSearchParams(window.location.search);
+  const clientId = params.get('clientId');
+  const therapistId = params.get('therapistId');
+
+  const handleSuccess = () => {
+    window.alert('Payment successful! Invoice generated.');
+  };
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] px-4 py-10">
       <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
         <h1 className="text-3xl font-bold text-[#0B0B45] mb-2">Book your therapy session</h1>
         <p className="text-gray-500 mb-8">Choose a package and complete your secure advance payment.</p>
+
+        {!clientId || !therapistId ? (
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            This booking page needs a valid client and therapist ID in the URL to complete payment.
+          </div>
+        ) : null}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           {Object.entries(packageOptions).map(([label, value]) => (
@@ -53,8 +67,9 @@ export default function BookingPage() {
         <CheckoutButton
           amount={amount}
           packageType={selectedPackage}
-          clientId="64a000000000000000000001"
-          therapistId="64a000000000000000000002"
+          clientId={clientId}
+          therapistId={therapistId}
+          onSuccess={handleSuccess}
         />
       </div>
     </div>

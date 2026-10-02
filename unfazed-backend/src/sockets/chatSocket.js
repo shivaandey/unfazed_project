@@ -1,10 +1,22 @@
 const ChatMessage = require('../models/ChatMessage');
+const Client = require('../models/Client');
 
 module.exports = (io) => {
   io.on('connection', (socket) => {
-    socket.on('join-room', async ({ therapistId, clientId, role, name }) => {
-      const roomId = [therapistId, clientId].sort().join('-');
-      socket.data = { therapistId, clientId: String(clientId), role, name: name || role, roomId };
+    socket.on('join-room', async ({ therapistId, clientId, clientEmail, role, name }) => {
+      const normalizedClientEmail = (clientEmail || '').trim().toLowerCase();
+      const roomKey = normalizedClientEmail || String(clientId || 'guest');
+      const roomId = [String(therapistId), roomKey].sort().join('-');
+
+      if (role === 'therapist' && therapistId && normalizedClientEmail) {
+        const client = await Client.findOne({ therapistId, email: normalizedClientEmail });
+        if (!client) {
+          socket.emit('room-error', { message: 'This client is not connected to your roster yet.' });
+          return;
+        }
+      }
+
+      socket.data = { therapistId, clientId: String(clientId || roomKey), clientEmail: normalizedClientEmail, role, name: name || role, roomId };
       socket.join(roomId);
       socket.emit('joined-room', { roomId });
       socket.emit('chat-history', await ChatMessage.find({ roomId }).sort({ createdAt: 1 }).limit(200));
