@@ -124,10 +124,13 @@ export default function Register() {
               </form>
             ) : (
               <div className="text-center p-8 border border-gray-200 rounded-3xl bg-gray-50 h-full flex flex-col justify-center">
-                <h3 className="text-xl font-bold text-[#0B0B45] mb-3">Looking to book a session?</h3>
+                <h3 className="text-xl font-bold text-[#0B0B45] mb-3">Already a client?</h3>
                 <p className="text-gray-600 text-sm leading-relaxed">
-                  Clients do not need to register for an account. You can book sessions securely and directly through your therapist's unique public link.
+                  Choose your therapist, verify the email on your client record, and open your secure chat.
                 </p>
+                <Link to="/client-access" className="mt-5 inline-flex justify-center rounded-lg bg-[#0B0B45] px-5 py-3 font-bold text-white hover:bg-blue-900">
+                  Client sign in / register
+                </Link>
               </div>
             )}
           </div>

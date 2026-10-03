@@ -17,11 +17,7 @@ export default function LandingPage() {
         </div>
         
         <div className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-700">
-          <a href="#" className="hover:text-[#F28C28] transition-colors">Corporate Resources</a>
-          <a href="#" className="hover:text-[#F28C28] transition-colors">Plans & Pricing</a>
-          <a href="#" className="hover:text-[#F28C28] transition-colors">Our Counselors</a>
-          <a href="#" className="hover:text-[#F28C28] transition-colors">Wellness Hub</a>
-          <a href="#" className="hover:text-[#F28C28] transition-colors">Corporates</a>
+          <Link to="/client-access" className="hover:text-[#F28C28] transition-colors">Find a therapist</Link>
           <div className="flex gap-3 ml-4">
             <Link to="/register" className="px-6 py-2 bg-[#F28C28] text-white rounded-full hover:bg-orange-600 transition-colors">Sign Up</Link>
             <Link to="/login" className="px-6 py-2 border border-[#F28C28] text-[#F28C28] rounded-full hover:bg-orange-50 transition-colors">Login</Link>
@@ -101,9 +97,9 @@ export default function LandingPage() {
               <li>24/7 Support</li>
             </ul>
 
-            <button className="px-8 py-3 bg-[#F28C28] text-white font-medium rounded hover:bg-orange-600 transition-colors shadow-md">
-              View All Counselors
-            </button>
+            <Link to="/client-access" className="inline-flex px-8 py-3 bg-[#F28C28] text-white font-medium rounded hover:bg-orange-600 transition-colors shadow-md">
+              Find a therapist
+            </Link>
           </div>
         </div>
       </section>

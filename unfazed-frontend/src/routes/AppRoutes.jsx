@@ -14,7 +14,8 @@ import Notes from '../pages/therapist/Notes';
 import Analytics from '../pages/therapist/Analytics';
 import Profile from '../pages/therapist/Profile';
 
-import ClientPortal from '../pages/client/ClientPortal';
+import ClientPortalSecure from '../pages/client/ClientPortalSecure';
+import ClientAccess from '../pages/client/ClientAccess';
 import BookingPage from '../pages/client/BookingPage';
 import LandingPage from '../pages/LandingPage';
 
@@ -49,7 +50,9 @@ export default function AppRoutes() {
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
       <Route path="/booking" element={<BookingPage />} />
-      <Route path="/:slug" element={<ClientPortal />} />
+      <Route path="/client-access" element={<ClientAccess />} />
+      <Route path="/client-access/:slug" element={<ClientAccess />} />
+      <Route path="/:slug" element={<ClientPortalSecure />} />
     </Routes>
   );
 }

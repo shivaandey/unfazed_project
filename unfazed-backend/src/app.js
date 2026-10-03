@@ -1,10 +1,11 @@
 const express = require('express');
 const cors = require('cors');
+const { corsOrigin } = require('./config/cors');
 
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({ origin: corsOrigin }));
 app.use(express.json());
 
 // Routes (Now referencing paths relative to the src/ folder)

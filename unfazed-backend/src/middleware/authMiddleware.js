@@ -12,6 +12,10 @@ const protect = async (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
       
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+      if (decoded.role === 'client') {
+        return res.status(401).json({ message: 'Not authorized for therapist access' });
+      }
       
       req.user = await Therapist.findById(decoded.id).select('-password');
       

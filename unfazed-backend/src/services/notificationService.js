@@ -2,15 +2,34 @@ const nodemailer = require('nodemailer');
 const Notification = require('../models/Notification');
 const domainEvents = require('./domainEvents');
 
-const transporter = process.env.EMAIL_USER && process.env.EMAIL_PASS
-  ? nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    })
-  : null;
+const createTransporter = () => {
+  const user = process.env.EMAIL_USER?.trim();
+  const pass = process.env.EMAIL_PASS;
+  if (!user || !pass) return null;
+
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user, pass },
+  });
+};
+
+const sendTransactionalEmail = async ({ to, subject, text }) => {
+  const transporter = createTransporter();
+  if (!transporter || !to) return false;
+
+  try {
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+      to,
+      subject,
+      text,
+    });
+    return true;
+  } catch (error) {
+    console.error('Transactional email failed:', error.message);
+    return false;
+  }
+};
 
 const queue = [];
 
@@ -43,7 +62,12 @@ exports.notify = async ({
     return event;
   }
 
-  if (type === 'email' && transporter && normalizedTo) {
+  if (type === 'email' && normalizedTo) {
+    const transporter = createTransporter();
+    if (!transporter) {
+      console.log(`[EMAIL QUEUED] ${eventType}: ${normalizedTo} -> ${text}`);
+      return event;
+    }
     try {
       await transporter.sendMail({
         from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
@@ -62,6 +86,21 @@ exports.notify = async ({
 };
 
 exports.getQueuedNotifications = () => queue;
+
+exports.sendClientAccessCode = async ({ to, code, therapistName }) => {
+  if (!code) return false;
+  return sendTransactionalEmail({
+    to,
+    subject: 'Your client chat verification code',
+    text: `Your verification code for ${therapistName}'s client portal is ${code}. It expires in 10 minutes. If you did not request this code, you can ignore this email.`,
+  });
+};
+
+exports.sendTherapistPasswordResetCode = ({ to, code }) => sendTransactionalEmail({
+  to,
+  subject: 'Reset your Unfazed password',
+  text: `Your Unfazed password reset code is ${code}. It expires in 10 minutes. If you did not request a reset, you can ignore this email.`,
+});
 
 exports.sendBookingConfirmation = ({ to, therapistName, recipientId = to, recipientType = 'client' }) =>
   exports.notify({

@@ -11,6 +11,7 @@ export default function ClientProfile() {
   const [activeTab, setActiveTab] = useState('overview');
   const [client, setClient] = useState(null);
   const [sessions, setSessions] = useState([]);
+  const [selectedChatSessionId, setSelectedChatSessionId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -33,6 +34,8 @@ export default function ClientProfile() {
 
         setClient(profile);
         setSessions(sessionList);
+        const firstChatSession = sessionList.find((session) => ['Scheduled', 'Completed'].includes(session.status));
+        setSelectedChatSessionId(profile?.clientAccessEnabled ? '' : firstChatSession?._id || '');
         setError('');
 
         if (profile) {
@@ -192,13 +195,32 @@ export default function ClientProfile() {
           </div>
         </div>
 
-        <ChatWidget
-          therapistId={user?._id}
-          clientId={client._id}
-          clientEmail={client.email}
-          role="therapist"
-          name={user?.name || 'Therapist'}
-        />
+        <section className="mt-8 max-w-3xl rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-bold text-[#0B0B45]">Client conversation</h3>
+              <p className="mt-1 text-sm text-gray-500">Choose an appointment chat or the verified client conversation.</p>
+            </div>
+            <select value={selectedChatSessionId} onChange={(event) => setSelectedChatSessionId(event.target.value)} className="max-w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm">
+              {client.clientAccessEnabled && <option value="">Verified client conversation</option>}
+              {sessions.filter((session) => ['Scheduled', 'Completed'].includes(session.status)).map((session) => (
+                <option key={session._id} value={session._id}>{new Date(session.startTime).toLocaleString()} appointment chat</option>
+              ))}
+            </select>
+          </div>
+          {selectedChatSessionId || client.clientAccessEnabled ? (
+            <ChatWidget
+              therapistId={user?._id}
+              clientId={client._id}
+              clientEmail={client.email}
+              role="therapist"
+              name={user?.name || 'Therapist'}
+              bookingSessionId={selectedChatSessionId || undefined}
+            />
+          ) : (
+            <p className="rounded-lg bg-blue-50 p-4 text-sm text-blue-900">A booked appointment is required to start an appointment chat. The client can also verify their email to enable the long-term client conversation.</p>
+          )}
+        </section>
       </main>
     </div>
   );

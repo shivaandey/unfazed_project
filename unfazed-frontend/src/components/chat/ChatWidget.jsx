@@ -3,18 +3,12 @@ import { io } from 'socket.io-client';
 
 const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000', { autoConnect: true });
 
-const getClientId = (therapistId) => {
-  const key = `unfazed-chat-client-${therapistId}`;
-  let id = localStorage.getItem(key);
-  if (!id) { id = crypto.randomUUID(); localStorage.setItem(key, id); }
-  return id;
-};
-
-export default function ChatWidget({ therapistId, clientId, clientEmail, role = 'client', name = 'Client' }) {
-  const resolvedClientId = clientId || getClientId(therapistId);
+export default function ChatWidget({ therapistId, clientId, clientEmail, role = 'client', name = 'Client', accessToken, bookingSessionId }) {
+  const resolvedClientId = clientId || '';
   const resolvedEmail = (clientEmail || '').trim().toLowerCase();
-  const roomKey = resolvedEmail || resolvedClientId;
+  const roomKey = bookingSessionId ? `booking-${bookingSessionId}` : resolvedEmail || resolvedClientId;
   const roomId = [String(therapistId), String(roomKey)].sort().join('-');
+  const token = accessToken || (role === 'client' ? sessionStorage.getItem('clientChatToken') : localStorage.getItem('token'));
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -26,21 +20,27 @@ export default function ChatWidget({ therapistId, clientId, clientEmail, role = 
     const handleMessage = (message) => setMessages((prev) => [...prev, message]);
     const handleTyping = ({ sender, isTyping: typing }) => sender !== role && setIsTyping(typing);
     const handleRoomError = ({ message }) => setConnectionError(message);
+    const handleJoined = () => {
+      setConnectionError('');
+      socket.emit('mark-read');
+    };
 
-    socket.emit('join-room', { therapistId, clientId: resolvedClientId, clientEmail: resolvedEmail, role, name });
-    socket.emit('mark-read');
+    socket.on('joined-room', handleJoined);
     socket.on('chat-history', handleHistory);
     socket.on('receive-message', handleMessage);
     socket.on('typing-status', handleTyping);
     socket.on('room-error', handleRoomError);
+    socket.emit('join-room', { therapistId, clientId: resolvedClientId, clientEmail: resolvedEmail, role, name, token, bookingSessionId });
 
     return () => {
+      socket.emit('leave-room');
+      socket.off('joined-room', handleJoined);
       socket.off('chat-history', handleHistory);
       socket.off('receive-message', handleMessage);
       socket.off('typing-status', handleTyping);
       socket.off('room-error', handleRoomError);
     };
-  }, [therapistId, resolvedClientId, resolvedEmail, role, name]);
+  }, [therapistId, resolvedClientId, resolvedEmail, role, name, token, bookingSessionId]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });

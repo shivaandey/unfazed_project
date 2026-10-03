@@ -1,9 +1,16 @@
 const Therapist = require('../models/Therapist');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const generateSlug = require('../utils/generateSlug');
+const { sendTherapistPasswordResetCode } = require('../services/notificationService');
 
 const normalizeEmail = (email = '') => String(email).trim().toLowerCase();
+const passwordResetMessage = 'If an account exists for that email, a reset code will be sent.';
+const hashResetCode = (therapistId, code) => crypto
+  .createHmac('sha256', process.env.JWT_SECRET)
+  .update(`${therapistId}:${code}`)
+  .digest('hex');
 
 const getStoredPasswordHash = (therapist) => {
   if (!therapist) return null;
@@ -11,12 +18,12 @@ const getStoredPasswordHash = (therapist) => {
 };
 
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+  return jwt.sign({ id, role: 'therapist' }, process.env.JWT_SECRET, { expiresIn: '30d' });
 };
 
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role = 'therapist' } = req.body;
+    const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Name, email and password are required' });
@@ -35,7 +42,7 @@ exports.register = async (req, res) => {
       name,
       email: email.toLowerCase(),
       password: hashedPassword,
-      role,
+      role: 'therapist',
       slug
     });
 
@@ -113,24 +120,82 @@ exports.getMe = async (req, res) => {
   }
 };
 
-exports.resetPassword = async (req, res) => {
+exports.requestPasswordReset = async (req, res) => {
   try {
-    const { email, newPassword } = req.body;
-    const therapist = await Therapist.findOne({ email: normalizeEmail(email) });
-
-    if (!therapist) {
-      return res.status(404).json({ message: 'Therapist not found' });
+    const email = normalizeEmail(req.body.email);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: 'Enter a valid email address.' });
+    }
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      return res.status(503).json({ message: 'Email verification is not configured. Contact support.' });
     }
 
-    const salt = await bcrypt.genSalt(10);
-    therapist.password = await bcrypt.hash(newPassword, salt);
-    if (therapist.password_hash) {
-      delete therapist.password_hash;
+    const therapist = await Therapist.findOne({ email }).select('+passwordResetCodeSentAt');
+    if (!therapist) return res.status(202).json({ message: passwordResetMessage });
+
+    if (therapist.passwordResetCodeSentAt && Date.now() - therapist.passwordResetCodeSentAt.getTime() < 60_000) {
+      return res.status(429).json({ message: 'Please wait a minute before requesting another code.' });
     }
+
+    const code = crypto.randomInt(100000, 1000000).toString();
+    therapist.passwordResetCodeHash = hashResetCode(therapist._id, code);
+    therapist.passwordResetCodeExpiresAt = new Date(Date.now() + 10 * 60_000);
+    therapist.passwordResetCodeSentAt = new Date();
+    therapist.passwordResetCodeAttempts = 0;
     await therapist.save();
 
-    res.status(200).json({ message: 'Password reset successfully' });
+    const sent = await sendTherapistPasswordResetCode({ to: therapist.email, code });
+    if (!sent) {
+      therapist.passwordResetCodeHash = undefined;
+      therapist.passwordResetCodeExpiresAt = undefined;
+      therapist.passwordResetCodeSentAt = undefined;
+      therapist.passwordResetCodeAttempts = 0;
+      await therapist.save();
+      return res.status(503).json({ message: 'Could not send the reset code. Check email settings and try again.' });
+    }
+
+    return res.status(202).json({ message: passwordResetMessage });
   } catch (error) {
-    res.status(500).json({ message: 'Password reset error', error: error.message });
+    console.error('Password reset code request failed:', error.message);
+    return res.status(500).json({ message: 'Could not request a password reset code.' });
+  }
+};
+
+exports.confirmPasswordReset = async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body.email);
+    const code = String(req.body.code || '').trim();
+    const { newPassword } = req.body;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^\d{6}$/.test(code) || typeof newPassword !== 'string' || newPassword.length < 8) {
+      return res.status(400).json({ message: 'Enter a valid email, six-digit code, and password of at least 8 characters.' });
+    }
+
+    const therapist = await Therapist.findOne({ email }).select('+passwordResetCodeHash +passwordResetCodeExpiresAt +passwordResetCodeAttempts');
+    if (!therapist || !therapist.passwordResetCodeHash || !therapist.passwordResetCodeExpiresAt || therapist.passwordResetCodeExpiresAt <= new Date()) {
+      return res.status(401).json({ message: 'The reset code is invalid or expired. Request a new one.' });
+    }
+    if (therapist.passwordResetCodeAttempts >= 5) {
+      return res.status(429).json({ message: 'Too many incorrect attempts. Request a new code.' });
+    }
+
+    const expectedHash = Buffer.from(therapist.passwordResetCodeHash, 'hex');
+    const suppliedHash = Buffer.from(hashResetCode(therapist._id, code), 'hex');
+    if (expectedHash.length !== suppliedHash.length || !crypto.timingSafeEqual(expectedHash, suppliedHash)) {
+      therapist.passwordResetCodeAttempts += 1;
+      await therapist.save();
+      return res.status(401).json({ message: 'The reset code is invalid or expired.' });
+    }
+
+    therapist.password = await bcrypt.hash(newPassword, 10);
+    therapist.passwordResetCodeHash = undefined;
+    therapist.passwordResetCodeExpiresAt = undefined;
+    therapist.passwordResetCodeSentAt = undefined;
+    therapist.passwordResetCodeAttempts = 0;
+    await therapist.save();
+
+    return res.status(200).json({ message: 'Password reset successfully. Sign in with your new password.' });
+  } catch (error) {
+    console.error('Password reset confirmation failed:', error.message);
+    return res.status(500).json({ message: 'Could not reset the password.' });
   }
 };

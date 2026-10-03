@@ -2,6 +2,7 @@ const Availability = require('../models/Availability');
 const Client = require('../models/Client');
 const Session = require('../models/Session');
 const Therapist = require('../models/Therapist');
+const jwt = require('jsonwebtoken');
 const domainEvents = require('../services/domainEvents');
 
 const syncClientRoster = async ({ therapistId, clientName, clientEmail }) => {
@@ -139,7 +140,15 @@ exports.bookSession = async (req, res) => {
     });
 
     await session.save();
-    await syncClientRoster({ therapistId, clientName, clientEmail });
+    const client = await syncClientRoster({ therapistId, clientName, clientEmail });
+    const clientChatToken = client && !isWaitlist
+      ? jwt.sign({
+        id: String(client._id),
+        role: 'client',
+        therapistId: String(therapistId),
+        bookingSessionId: String(session._id),
+      }, process.env.JWT_SECRET, { expiresIn: '30d' })
+      : null;
 
     if (!isWaitlist) {
       const therapist = await Therapist.findById(therapistId).select('name');
@@ -149,7 +158,11 @@ exports.bookSession = async (req, res) => {
       console.log(`[WAITLIST] ${clientEmail} was added to waitlist and roster.`);
     }
 
-    res.status(201).json(session);
+    res.status(201).json({
+      ...session.toObject(),
+      clientId: client?._id,
+      clientChatToken,
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
