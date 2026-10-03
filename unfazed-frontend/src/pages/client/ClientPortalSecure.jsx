@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import { addDays, format } from 'date-fns';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import axiosInstance from '../../api/axiosInstance';
 
 export default function ClientPortalSecure() {
   const { slug } = useParams();
-  const navigate = useNavigate();
   const [therapist, setTherapist] = useState(null);
   const [availability, setAvailability] = useState(null);
   const [selected, setSelected] = useState(null);
   const [form, setForm] = useState({ clientName: '', clientEmail: '', type: 'Video' });
   const [status, setStatus] = useState('');
+  const [bookingConfirmation, setBookingConfirmation] = useState(null);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const dates = Array.from({ length: 14 }, (_, offset) => addDays(new Date(), offset));
 
@@ -83,7 +83,15 @@ export default function ClientPortalSecure() {
         startTime: response.data.startTime,
         endTime: response.data.endTime,
       }));
-      navigate(`/booking?clientId=${encodeURIComponent(response.data.clientId)}&therapistId=${encodeURIComponent(therapist._id)}`);
+      setBookingConfirmation({
+        sessionId: response.data._id,
+        clientId: response.data.clientId,
+        clientName: response.data.clientName,
+        startTime: response.data.startTime,
+        endTime: response.data.endTime,
+        type: response.data.type,
+      });
+      setStatus('');
     } catch (error) {
       setStatus(error.response?.data?.message || 'That slot is no longer available.');
     }
@@ -91,6 +99,35 @@ export default function ClientPortalSecure() {
 
   if (!therapist) {
     return <div className="flex min-h-screen items-center justify-center text-gray-600">{status || 'Loading therapist profile...'}</div>;
+  }
+
+  if (bookingConfirmation) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#F8FAFC] px-4 py-10">
+        <section className="w-full max-w-xl rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+          <p className="text-sm font-bold uppercase text-green-700">Appointment confirmed</p>
+          <h1 className="mt-2 text-3xl font-bold text-[#0B0B45]">You’re booked, {bookingConfirmation.clientName}</h1>
+          <p className="mt-2 text-gray-600">Your appointment with {therapist.name} is confirmed.</p>
+          <dl className="mt-6 space-y-3 rounded-xl bg-gray-50 p-4 text-sm">
+            <div className="flex justify-between gap-4"><dt className="text-gray-500">Date and time</dt><dd className="text-right font-semibold text-[#0B0B45]">{new Date(bookingConfirmation.startTime).toLocaleString()}</dd></div>
+            <div className="flex justify-between gap-4"><dt className="text-gray-500">Session</dt><dd className="font-semibold text-[#0B0B45]">{bookingConfirmation.type}</dd></div>
+            <div className="flex justify-between gap-4"><dt className="text-gray-500">Duration</dt><dd className="font-semibold text-[#0B0B45]">{Math.round((new Date(bookingConfirmation.endTime) - new Date(bookingConfirmation.startTime)) / 60000)} minutes</dd></div>
+          </dl>
+          <p className="mt-4 text-sm text-gray-500">A confirmation email will be sent to the email address you provided.</p>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <button type="button" onClick={() => setBookingConfirmation(null)} className="rounded-lg border border-gray-300 px-5 py-3 font-bold text-gray-700 hover:bg-gray-50">
+              Done
+            </button>
+            <Link
+              to={`/booking?clientId=${encodeURIComponent(bookingConfirmation.clientId)}&therapistId=${encodeURIComponent(therapist._id)}&sessionId=${encodeURIComponent(bookingConfirmation.sessionId)}`}
+              className="rounded-lg bg-[#0B0B45] px-5 py-3 text-center font-bold text-white hover:bg-blue-900"
+            >
+              Continue to payment
+            </Link>
+          </div>
+        </section>
+      </main>
+    );
   }
 
   return (

@@ -104,17 +104,14 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* FOOTER & NEWSLETTER */}
+      {/* FOOTER & CONTACT */}
       <div className="relative mt-20">
         <div className="absolute left-0 right-0 -top-24 max-w-5xl mx-auto px-6 z-20">
           <div className="bg-white rounded-2xl shadow-xl p-10 flex flex-col items-center text-center border-t-4 border-[#0B0B45] relative overflow-hidden">
             <div className="absolute right-0 bottom-0 w-24 h-24 bg-[#F28C28] rounded-tl-full translate-x-4 translate-y-4"></div>
-            <h2 className="text-3xl font-extrabold text-[#0B0B45] mb-2 z-10">The latest mental health news and tips, delivered to your inbox weekly.</h2>
+            <h2 className="text-3xl font-extrabold text-[#0B0B45] mb-2 z-10">Questions about starting therapy?</h2>
             <div className="w-48 h-1 bg-[#F28C28] mb-8 z-10"></div>
-            <div className="flex w-full max-w-2xl z-10">
-              <input type="email" placeholder="Email" className="flex-1 px-4 py-3 border border-gray-300 rounded-l focus:outline-none focus:border-[#F28C28]" />
-              <button className="px-8 py-3 bg-[#F28C28] text-white font-medium rounded-r hover:bg-orange-600 transition-colors">Subscribe</button>
-            </div>
+            <a href="mailto:hola@unfazed.care?subject=Therapy%20enquiry" className="z-10 rounded-lg bg-[#F28C28] px-8 py-3 font-bold text-white hover:bg-orange-600 transition-colors">Email our team</a>
           </div>
         </div>
 
@@ -147,33 +144,25 @@ export default function LandingPage() {
             <div>
               <h4 className="text-lg font-bold mb-6">Quick Links</h4>
               <ul className="space-y-4 text-sm font-medium text-gray-300">
-                <li><a href="#" className="hover:text-white transition-colors">For Corporates</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">For Therapists</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">About us</a></li>
+                <li><a href="mailto:hola@unfazed.care?subject=Corporate%20enquiry" className="hover:text-white transition-colors">For Corporates</a></li>
+                <li><Link to="/register" className="hover:text-white transition-colors">For Therapists</Link></li>
+                <li><a href="mailto:hola@unfazed.care" className="hover:text-white transition-colors">Contact</a></li>
               </ul>
             </div>
 
             <div>
               <h4 className="text-lg font-bold mb-6">Legal Stuff</h4>
               <ul className="space-y-4 text-sm font-medium text-gray-300">
-                <li><a href="#" className="hover:text-white transition-colors">Disclaimer</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Terms Of Service</a></li>
+                <li><a href="mailto:hola@unfazed.care?subject=Disclaimer%20request" className="hover:text-white transition-colors">Request disclaimer</a></li>
+                <li><a href="mailto:hola@unfazed.care?subject=Privacy%20policy%20request" className="hover:text-white transition-colors">Request privacy policy</a></li>
+                <li><a href="mailto:hola@unfazed.care?subject=Terms%20of%20service%20request" className="hover:text-white transition-colors">Request terms of service</a></li>
               </ul>
             </div>
 
             <div>
-              <h4 className="text-lg font-bold mb-6">We are here to make sure that you are always happy</h4>
-              <div className="flex bg-white rounded overflow-hidden mb-4 p-1">
-                <span className="flex items-center px-3 bg-gray-100 text-gray-800 text-sm border-r border-gray-300">
-                  🇮🇳 ▾
-                </span>
-                <input type="text" placeholder="Enter your phone number" className="w-full px-3 py-2 text-gray-800 text-sm focus:outline-none" />
-              </div>
-              <button className="px-6 py-2.5 bg-[#F28C28] text-white font-medium rounded shadow hover:bg-orange-600 transition-colors w-1/2">
-                Request Callback
-              </button>
+              <h4 className="text-lg font-bold mb-3">Talk to our team</h4>
+              <p className="mb-4 text-sm text-gray-300">Call us with questions about appointments or services.</p>
+              <a href="tel:+916377327550" className="inline-flex rounded-lg bg-[#F28C28] px-6 py-2.5 font-bold text-white shadow hover:bg-orange-600 transition-colors">Call our team</a>
             </div>
           </div>
 

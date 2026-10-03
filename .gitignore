@@ -6,3 +6,4 @@
 # Installed dependencies and build output
 **/node_modules/
 **/dist/
+unfazed-backend/public/invoices/*.pdf

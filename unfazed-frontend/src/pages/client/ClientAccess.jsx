@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import axiosInstance from '../../api/axiosInstance';
 import ChatWidget from '../../components/chat/ChatWidget';
 
 export default function ClientAccess() {
   const { slug } = useParams();
+  const navigate = useNavigate();
   const [therapist, setTherapist] = useState(null);
   const [therapists, setTherapists] = useState([]);
   const [selectedTherapistSlug, setSelectedTherapistSlug] = useState(slug || '');
   const [directoryLoading, setDirectoryLoading] = useState(!slug);
-  const [mode, setMode] = useState('register');
   const [stage, setStage] = useState('details');
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [status, setStatus] = useState('');
@@ -57,8 +56,6 @@ export default function ClientAccess() {
     try {
       const response = await axiosInstance.post('/auth/client/request-code', {
         therapistSlug: therapist.slug,
-        mode,
-        name: mode === 'register' ? name : undefined,
         email,
       });
       setStage('verify');
@@ -77,16 +74,16 @@ export default function ClientAccess() {
     try {
       const response = await axiosInstance.post('/auth/client/verify-code', {
         therapistSlug: therapist.slug,
-        mode,
-        name: mode === 'register' ? name : undefined,
         email,
         code,
       });
       const identity = { client: response.data.client, therapist: response.data.therapist };
+      sessionStorage.removeItem('bookingChatSession');
       sessionStorage.setItem('clientChatToken', response.data.token);
       sessionStorage.setItem('clientChatIdentity', JSON.stringify(identity));
       setClientSession({ token: response.data.token, ...identity });
       setStatus('');
+      navigate(`/booking?clientId=${encodeURIComponent(response.data.client.id)}&therapistId=${encodeURIComponent(response.data.therapist.id)}`);
     } catch (error) {
       setStatus(error.response?.data?.message || 'Could not verify that code.');
     } finally {
@@ -147,7 +144,7 @@ export default function ClientAccess() {
 
         <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
           <h1 className="text-2xl font-bold text-[#0B0B45]">Client chat</h1>
-          <p className="mt-2 text-sm text-gray-600">Access is available to active clients listed by {therapist.name}. We’ll email a one-time verification code to confirm your address.</p>
+          <p className="mt-2 text-sm text-gray-600">Sign in with the email you used when booking with {therapist.name}. We’ll email a one-time code to verify your address.</p>
 
           {activeClientSession ? (
             <>
@@ -171,29 +168,14 @@ export default function ClientAccess() {
             </>
           ) : (
             <>
-              <div className="mt-6 grid grid-cols-2 border-b">
-                <button type="button" onClick={() => { setMode('register'); setStage('details'); setStatus(''); }} className={`border-b-2 px-4 py-3 text-sm font-bold ${mode === 'register' ? 'border-[#F28C28] text-[#0B0B45]' : 'border-transparent text-gray-500'}`}>
-                  Register
-                </button>
-                <button type="button" onClick={() => { setMode('login'); setStage('details'); setStatus(''); }} className={`border-b-2 px-4 py-3 text-sm font-bold ${mode === 'login' ? 'border-[#F28C28] text-[#0B0B45]' : 'border-transparent text-gray-500'}`}>
-                  Log in
-                </button>
-              </div>
-
               {stage === 'details' ? (
                 <form onSubmit={requestCode} className="mt-6 space-y-4">
-                  {mode === 'register' && (
-                    <label className="block text-sm font-semibold text-gray-700">
-                      Name on your client record
-                      <input required autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} className="mt-2 w-full rounded-lg border border-gray-300 p-3 outline-none focus:ring-2 focus:ring-[#F28C28]" />
-                    </label>
-                  )}
                   <label className="block text-sm font-semibold text-gray-700">
-                    Email on your client record
+                    Email used when booking
                     <input required type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 w-full rounded-lg border border-gray-300 p-3 outline-none focus:ring-2 focus:ring-[#F28C28]" />
                   </label>
                   <button disabled={busy} className="w-full rounded-lg bg-[#0B0B45] px-5 py-3 font-bold text-white hover:bg-blue-900 disabled:opacity-60">
-                    {busy ? 'Sending code...' : mode === 'register' ? 'Verify email and register' : 'Email me a login code'}
+                    {busy ? 'Sending code...' : 'Email me a sign-in code'}
                   </button>
                 </form>
               ) : (

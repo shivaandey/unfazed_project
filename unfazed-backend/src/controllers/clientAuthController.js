@@ -5,8 +5,7 @@ const Therapist = require('../models/Therapist');
 const { sendClientAccessCode } = require('../services/notificationService');
 
 const normalizeEmail = (email = '') => String(email).trim().toLowerCase();
-const normalizeName = (name = '') => String(name).trim().replace(/\s+/g, ' ').toLowerCase();
-const genericRequestMessage = 'If the details match an active client record, a verification code will be sent to that email.';
+const genericRequestMessage = 'If the email matches an active client record, a verification code will be sent.';
 const hashCode = (clientId, code) => crypto
   .createHmac('sha256', process.env.JWT_SECRET)
   .update(`${clientId}:${code}`)
@@ -14,14 +13,14 @@ const hashCode = (clientId, code) => crypto
 
 exports.requestClientCode = async (req, res) => {
   try {
-    const { therapistSlug, email, name, mode } = req.body;
+    const { therapistSlug, email } = req.body;
     const normalizedEmail = normalizeEmail(email);
 
-    if (!therapistSlug || !normalizedEmail || !['register', 'login'].includes(mode)) {
-      return res.status(400).json({ message: 'Therapist, email, and access mode are required.' });
+    if (!therapistSlug || !normalizedEmail) {
+      return res.status(400).json({ message: 'Therapist and email are required.' });
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail) || (mode === 'register' && !normalizeName(name))) {
-      return res.status(400).json({ message: mode === 'register' ? 'Enter your name and a valid email.' : 'Enter a valid email.' });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      return res.status(400).json({ message: 'Enter a valid email.' });
     }
 
     const therapist = await Therapist.findOne({ slug: therapistSlug }).select('_id name');
@@ -33,10 +32,7 @@ exports.requestClientCode = async (req, res) => {
       status: 'Active',
     }).select('+loginCodeSentAt +loginCodeAttempts');
 
-    const validRosterClient = client
-      && (mode !== 'register' || (!client.clientAccessEnabled && normalizeName(client.name) === normalizeName(name)))
-      && (mode !== 'login' || client.clientAccessEnabled);
-    if (!validRosterClient) return res.status(202).json({ message: genericRequestMessage });
+    if (!client) return res.status(202).json({ message: genericRequestMessage });
 
     if (client.loginCodeSentAt && Date.now() - client.loginCodeSentAt.getTime() < 60_000) {
       return res.status(429).json({ message: 'Please wait a minute before requesting another code.' });
@@ -47,7 +43,7 @@ exports.requestClientCode = async (req, res) => {
     client.loginCodeExpiresAt = new Date(Date.now() + 10 * 60_000);
     client.loginCodeSentAt = new Date();
     client.loginCodeAttempts = 0;
-    client.loginCodePurpose = mode;
+    client.loginCodePurpose = 'login';
     await client.save();
 
     const sent = await sendClientAccessCode({ to: normalizedEmail, code, therapistName: therapist.name });
@@ -70,11 +66,11 @@ exports.requestClientCode = async (req, res) => {
 
 exports.verifyClientCode = async (req, res) => {
   try {
-    const { therapistSlug, email, name, mode, code } = req.body;
+    const { therapistSlug, email, code } = req.body;
     const normalizedEmail = normalizeEmail(email);
     const normalizedCode = String(code || '').trim();
 
-    if (!therapistSlug || !normalizedEmail || !['register', 'login'].includes(mode) || !/^\d{6}$/.test(normalizedCode)) {
+    if (!therapistSlug || !normalizedEmail || !/^\d{6}$/.test(normalizedCode)) {
       return res.status(400).json({ message: 'Enter the six-digit verification code.' });
     }
 
@@ -87,11 +83,7 @@ exports.verifyClientCode = async (req, res) => {
       status: 'Active',
     }).select('+loginCodeHash +loginCodeExpiresAt +loginCodeAttempts +loginCodePurpose');
 
-    const validMode = client && client.loginCodePurpose === mode
-      && (mode === 'register'
-        ? !client.clientAccessEnabled && normalizeName(client.name) === normalizeName(name)
-        : client.clientAccessEnabled);
-    if (!validMode || !client.loginCodeHash || !client.loginCodeExpiresAt || client.loginCodeExpiresAt <= new Date()) {
+    if (!client || client.loginCodePurpose !== 'login' || !client.loginCodeHash || !client.loginCodeExpiresAt || client.loginCodeExpiresAt <= new Date()) {
       return res.status(401).json({ message: 'The code is invalid or expired. Request a new one.' });
     }
 

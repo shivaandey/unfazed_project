@@ -6,6 +6,7 @@ import axiosInstance from '../../api/axiosInstance';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const { login } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -42,11 +43,27 @@ export default function Login() {
             />
           </div>
           <div>
-            <input 
-              type="password" placeholder="Password *" required
-              value={password} onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-lg outline-none focus:ring-2 focus:ring-[#F28C28]"
-            />
+            <div className="relative">
+              <input
+                id="login-password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Password *"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 pr-16 outline-none focus:ring-2 focus:ring-[#F28C28]"
+              />
+              <button
+                type="button"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-pressed={showPassword}
+                onClick={() => setShowPassword((visible) => !visible)}
+                className="absolute inset-y-0 right-3 my-auto h-8 px-2 text-sm font-semibold text-gray-600 hover:text-[#0B0B45]"
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
             <div className="flex justify-end mt-2">
               <Link to="/reset-password" className="text-xs font-bold text-[#F28C28] hover:underline">
                 Forgot Password?

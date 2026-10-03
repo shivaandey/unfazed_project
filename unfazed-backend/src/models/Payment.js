@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const paymentSchema = new mongoose.Schema({
   clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: true },
   therapistId: { type: mongoose.Schema.Types.ObjectId, ref: 'Therapist', required: true },
+  sessionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Session', default: null },
   razorpay_order_id: { type: String, required: true },
   gateway_transaction_id: { type: String },
   total_amount: { type: Number, required: true }, // Stored in INR

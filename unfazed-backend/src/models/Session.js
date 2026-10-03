@@ -8,6 +8,8 @@ const sessionSchema = new mongoose.Schema({
   endTime: { type: Date, required: true },
   status: { type: String, enum: ['Scheduled', 'Completed', 'Cancelled', 'NoShow', 'Waitlist'], default: 'Scheduled' },
   type: { type: String, enum: ['Video', 'Audio'], default: 'Video' },
+  paymentStatus: { type: String, enum: ['NotStarted', 'Pending', 'Paid', 'Expired'], default: 'NotStarted' },
+  paymentHoldExpiresAt: { type: Date, default: null },
   reminderSentAt: { type: Date, default: null }
 }, { timestamps: true });
 

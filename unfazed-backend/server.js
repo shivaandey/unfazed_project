@@ -10,6 +10,7 @@ const initChatSocket = require('./src/sockets/chatSocket');
 const Session = require('./src/models/Session');
 const Therapist = require('./src/models/Therapist');
 const { scheduleReminders } = require('./src/services/notificationService');
+const { expirePaymentHolds } = require('./src/controllers/schedulingController');
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -25,11 +26,16 @@ const startServer = async () => {
   server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     scheduleReminders(Session, Therapist).catch((error) => console.error('Initial reminder worker failed:', error.message));
+    expirePaymentHolds().catch((error) => console.error('Initial payment hold cleanup failed:', error.message));
   });
 
   setInterval(() => {
     scheduleReminders(Session, Therapist).catch((error) => console.error('Reminder worker failed:', error.message));
   }, 15 * 60 * 1000);
+
+  setInterval(() => {
+    expirePaymentHolds().catch((error) => console.error('Payment hold cleanup failed:', error.message));
+  }, 60 * 1000);
 };
 
 startServer().catch((error) => {

@@ -7,6 +7,10 @@ export default function ClientsList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [addClientOpen, setAddClientOpen] = useState(false);
+  const [newClient, setNewClient] = useState({ name: '', email: '', phone: '' });
+  const [savingClient, setSavingClient] = useState(false);
+  const [actionStatus, setActionStatus] = useState('');
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -33,6 +37,23 @@ export default function ClientsList() {
     return name.includes(searchTerm.toLowerCase()) || email.includes(searchTerm.toLowerCase());
   });
 
+  const handleAddClient = async (event) => {
+    event.preventDefault();
+    setSavingClient(true);
+    setActionStatus('');
+    try {
+      const response = await axiosInstance.post('/clients', newClient);
+      setClients((current) => [response.data, ...current]);
+      setNewClient({ name: '', email: '', phone: '' });
+      setAddClientOpen(false);
+      setActionStatus('Client added to your roster.');
+    } catch (requestError) {
+      setActionStatus(requestError.response?.data?.message || 'Could not add this client.');
+    } finally {
+      setSavingClient(false);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-[#F8FAFC]">
       <main className="flex-1 p-8 overflow-y-auto animate-fade-in">
@@ -56,10 +77,24 @@ export default function ClientsList() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#F28C28] w-72"
             />
-            <button className="px-6 py-2 bg-[#F28C28] text-white font-medium rounded-lg hover:bg-orange-600 transition-colors">
-              + Add Client
+            <button type="button" onClick={() => { setAddClientOpen((open) => !open); setActionStatus(''); }} className="px-6 py-2 bg-[#F28C28] text-white font-medium rounded-lg hover:bg-orange-600 transition-colors">
+              {addClientOpen ? 'Close form' : 'Add client'}
             </button>
           </div>
+
+          {addClientOpen && (
+            <form onSubmit={handleAddClient} className="grid gap-3 border-b border-gray-100 bg-white p-6 sm:grid-cols-2">
+              <input required autoComplete="name" placeholder="Client name" value={newClient.name} onChange={(event) => setNewClient({ ...newClient, name: event.target.value })} className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:ring-2 focus:ring-[#F28C28]" />
+              <input required type="email" autoComplete="email" placeholder="Client email" value={newClient.email} onChange={(event) => setNewClient({ ...newClient, email: event.target.value })} className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:ring-2 focus:ring-[#F28C28]" />
+              <input type="tel" autoComplete="tel" placeholder="Phone (optional)" value={newClient.phone} onChange={(event) => setNewClient({ ...newClient, phone: event.target.value })} className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:ring-2 focus:ring-[#F28C28]" />
+              <div className="flex items-center gap-3 sm:justify-end">
+                <button type="button" onClick={() => setAddClientOpen(false)} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
+                <button type="submit" disabled={savingClient} className="rounded-lg bg-[#0B0B45] px-4 py-2 text-sm font-bold text-white hover:bg-blue-900 disabled:opacity-50">{savingClient ? 'Adding...' : 'Add client'}</button>
+              </div>
+              {actionStatus && <p role="status" className="text-sm text-red-700 sm:col-span-2">{actionStatus}</p>}
+            </form>
+          )}
+          {!addClientOpen && actionStatus && <p role="status" className="border-b border-gray-100 px-6 py-3 text-sm text-green-800">{actionStatus}</p>}
 
           {loading && (
             <div className="p-6 text-sm text-gray-500">Loading clients...</div>

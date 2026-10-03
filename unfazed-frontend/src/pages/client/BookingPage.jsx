@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import CheckoutButton from '../../components/payments/CheckoutButton';
 import ChatWidget from '../../components/chat/ChatWidget';
+import axiosInstance from '../../api/axiosInstance';
 
 const packageOptions = {
   Single: 1500,
@@ -11,9 +12,24 @@ const packageOptions = {
 
 const getBookingSession = (clientId, therapistId) => {
   try {
-    const booking = JSON.parse(sessionStorage.getItem('bookingChatSession') || 'null');
-    if (booking?.clientId === clientId && booking?.therapistId === therapistId && booking?.accessToken && booking?.bookingSessionId) {
-      return booking;
+    const appointment = JSON.parse(sessionStorage.getItem('bookingChatSession') || 'null');
+    if (appointment?.clientId === clientId && appointment?.therapistId === therapistId && appointment?.accessToken && appointment?.bookingSessionId) {
+      return appointment;
+    }
+
+    const accessToken = sessionStorage.getItem('clientChatToken');
+    const identity = JSON.parse(sessionStorage.getItem('clientChatIdentity') || 'null');
+    if (accessToken
+      && String(identity?.client?.id) === String(clientId)
+      && String(identity?.therapist?.id) === String(therapistId)) {
+      return {
+        clientId: identity.client.id,
+        clientName: identity.client.name,
+        clientEmail: identity.client.email,
+        therapistId: identity.therapist.id,
+        therapistName: identity.therapist.name,
+        accessToken,
+      };
     }
   } catch {
     return null;
@@ -26,21 +42,56 @@ export default function BookingPage() {
   const clientId = params.get('clientId');
   const therapistId = params.get('therapistId');
   const [bookingSession] = useState(() => getBookingSession(clientId, therapistId));
+  const sessionId = params.get('sessionId') || bookingSession?.bookingSessionId;
   const [selectedPackage, setSelectedPackage] = useState('Single');
   const [paymentStatus, setPaymentStatus] = useState('');
+  const [successfulPayment, setSuccessfulPayment] = useState(null);
+  const [invoiceStatus, setInvoiceStatus] = useState('');
+  const [downloadingInvoice, setDownloadingInvoice] = useState(false);
   const amount = packageOptions[selectedPackage];
 
-  const handleSuccess = () => {
+  const handleSuccess = (payment) => {
+    setSuccessfulPayment(payment);
     setPaymentStatus('Payment successful. Your invoice is ready.');
+  };
+
+  const downloadInvoice = async () => {
+    if (!successfulPayment?._id) return;
+    const token = bookingSession?.accessToken || sessionStorage.getItem('clientChatToken');
+    if (!token) {
+      setInvoiceStatus('Sign in again to download your invoice.');
+      return;
+    }
+
+    setDownloadingInvoice(true);
+    setInvoiceStatus('');
+    try {
+      const response = await axiosInstance.get(`/payments/${successfulPayment._id}/invoice`, {
+        responseType: 'blob',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const downloadUrl = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `Unfazed-invoice-${successfulPayment.gateway_transaction_id || successfulPayment._id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(downloadUrl);
+    } catch {
+      setInvoiceStatus('Could not download the invoice. Please sign in again and retry.');
+    } finally {
+      setDownloadingInvoice(false);
+    }
   };
 
   return (
     <main className="min-h-screen bg-[#F8FAFC] px-4 py-8 sm:px-6 lg:py-12">
       <div className="mx-auto max-w-6xl">
         <header className="mb-8">
-          <p className="text-sm font-bold uppercase text-[#F28C28]">Appointment booked</p>
+          <p className="text-sm font-bold uppercase text-[#F28C28]">{bookingSession?.bookingSessionId ? 'Appointment booked' : 'Client access'}</p>
           <h1 className="mt-2 text-3xl font-bold text-[#0B0B45]">Payment and therapist chat</h1>
-          <p className="mt-2 max-w-2xl text-gray-600">Your appointment is reserved. Complete payment and message your therapist here.</p>
+          <p className="mt-2 max-w-2xl text-gray-600">{bookingSession?.bookingSessionId ? 'Your appointment is reserved. Complete payment and message your therapist here.' : 'Choose a package for payment and message your therapist here.'}</p>
         </header>
 
         {!clientId || !therapistId ? (
@@ -79,10 +130,19 @@ export default function BookingPage() {
                   packageType={selectedPackage}
                   clientId={clientId}
                   therapistId={therapistId}
+                  sessionId={sessionId}
                   onSuccess={handleSuccess}
                 />
               </div>
-              {paymentStatus && <p role="status" className="mt-4 rounded-lg bg-green-50 p-3 text-sm font-semibold text-green-800">{paymentStatus}</p>}
+              {paymentStatus && (
+                <div role="status" className="mt-4 rounded-lg bg-green-50 p-3 text-sm font-semibold text-green-800">
+                  <p>{paymentStatus}</p>
+                  <button type="button" onClick={downloadInvoice} disabled={downloadingInvoice} className="mt-3 rounded-lg border border-green-700 px-4 py-2 font-bold text-green-800 hover:bg-green-100 disabled:opacity-60">
+                    {downloadingInvoice ? 'Preparing invoice...' : 'Download invoice PDF'}
+                  </button>
+                  {invoiceStatus && <p className="mt-2 text-sm font-medium text-red-700">{invoiceStatus}</p>}
+                </div>
+              )}
             </section>
 
             <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7">

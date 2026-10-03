@@ -8,9 +8,9 @@ export default function UpgradePrompt({ featureKey, currentTier = 'starter' }) {
             This {featureKey} feature is not available on the {currentTier} plan.
           </p>
         </div>
-        <button className="rounded-lg bg-[#0B0B45] px-4 py-2 text-sm font-semibold text-white hover:bg-blue-900">
-          Upgrade plan
-        </button>
+        <a href="mailto:hola@unfazed.care?subject=Plan%20upgrade%20request" className="rounded-lg bg-[#0B0B45] px-4 py-2 text-sm font-semibold text-white hover:bg-blue-900">
+          Request plan upgrade
+        </a>
       </div>
     </div>
   );

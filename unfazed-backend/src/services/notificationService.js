@@ -176,6 +176,7 @@ exports.scheduleReminders = async (Session, Therapist) => {
   const now = Date.now();
   const sessions = await Session.find({
     status: 'Scheduled',
+    paymentStatus: { $ne: 'Pending' },
     startTime: { $gte: new Date(now + 23 * 60 * 60 * 1000), $lte: new Date(now + 25 * 60 * 60 * 1000) },
     reminderSentAt: null,
   });

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import axiosInstance from '../../api/axiosInstance';
 
-export default function CheckoutButton({ amount, packageType, clientId, therapistId, onSuccess }) {
+export default function CheckoutButton({ amount, packageType, clientId, therapistId, sessionId, onSuccess }) {
   const [loading, setLoading] = useState(false);
 
   const loadRazorpayScript = () => {
@@ -41,6 +41,7 @@ export default function CheckoutButton({ amount, packageType, clientId, therapis
         packageType,
         clientId,
         therapistId,
+        ...(sessionId ? { sessionId } : {}),
       });
 
       const options = {

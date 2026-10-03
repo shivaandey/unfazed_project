@@ -28,6 +28,20 @@ const syncClientRoster = async ({ therapistId, clientName, clientEmail }) => {
   );
 };
 
+const expirePaymentHolds = async () => Session.updateMany(
+  {
+    status: 'Scheduled',
+    paymentStatus: 'Pending',
+    paymentHoldExpiresAt: { $lte: new Date() },
+  },
+  {
+    $set: { status: 'Cancelled', paymentStatus: 'Expired' },
+    $unset: { paymentHoldExpiresAt: 1 },
+  }
+);
+
+exports.expirePaymentHolds = expirePaymentHolds;
+
 const getDaySlots = (availability, date) => {
   const dateKey = date.toISOString().slice(0, 10);
   const override = availability.overrides?.find((item) => item.date === dateKey);
@@ -36,6 +50,7 @@ const getDaySlots = (availability, date) => {
 };
 
 const getAvailableSlots = async (therapistId, dateKey) => {
+  await expirePaymentHolds();
   const availability = await Availability.findOne({ therapistId });
   if (!availability) return [];
   const date = new Date(`${dateKey}T00:00:00`);
@@ -113,6 +128,8 @@ exports.bookSession = async (req, res) => {
     if (new Date(startTime) <= new Date() || new Date(endTime) <= new Date(startTime)) {
       return res.status(400).json({ message: 'Please choose a future time slot.' });
     }
+
+    await expirePaymentHolds();
     
     // Double-booking prevention
     const existing = await Session.findOne({
