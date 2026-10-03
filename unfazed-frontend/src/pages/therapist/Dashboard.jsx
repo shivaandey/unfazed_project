@@ -1,6 +1,6 @@
-import React, { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AuthContext } from '../../context/AuthContext';
+import { AuthContext } from '../../context/AuthContextValue';
 import Sidebar from '../../components/common/Sidebar';
 import axiosInstance from '../../api/axiosInstance';
 import NotificationBell from '../../components/common/NotificationBell';

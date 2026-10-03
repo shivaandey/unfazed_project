@@ -2,7 +2,7 @@ import { useContext, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Sidebar from '../../components/common/Sidebar';
 import axiosInstance from '../../api/axiosInstance';
-import { AuthContext } from '../../context/AuthContext';
+import { AuthContext } from '../../context/AuthContextValue';
 
 export default function Profile() {
   const { user, setUser } = useContext(AuthContext);

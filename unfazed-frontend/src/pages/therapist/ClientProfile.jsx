@@ -1,8 +1,8 @@
-import React, { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import axiosInstance from '../../api/axiosInstance';
-import { AuthContext } from '../../context/AuthContext';
+import { AuthContext } from '../../context/AuthContextValue';
 import ChatWidget from '../../components/chat/ChatWidget';
 
 export default function ClientProfile() {

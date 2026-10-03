@@ -8,7 +8,8 @@ const tierDefaults = [
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/unfazed');
+    const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/unfazed';
+    await mongoose.connect(mongoUri);
     await Promise.all(tierDefaults.map((config) => SubscriptionTierConfig.updateOne(
       { tierName: config.tierName }, { $setOnInsert: config }, { upsert: true }
     )));

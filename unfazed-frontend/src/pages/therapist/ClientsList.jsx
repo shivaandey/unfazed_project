@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axiosInstance from '../../api/axiosInstance';
 
@@ -38,6 +38,10 @@ export default function ClientsList() {
       <main className="flex-1 p-8 overflow-y-auto animate-fade-in">
         <header className="flex justify-between items-center mb-8">
           <div>
+            <Link to="/dashboard" className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-[#F28C28]">
+              <span aria-hidden="true">←</span>
+              Back to dashboard
+            </Link>
             <h2 className="text-3xl font-bold text-[#0B0B45]">Client Roster</h2>
             <p className="text-gray-500 mt-1">Manage your active and past clients.</p>
           </div>

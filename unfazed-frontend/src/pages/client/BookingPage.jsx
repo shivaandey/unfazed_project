@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import CheckoutButton from '../../components/payments/CheckoutButton';
 
 export default function BookingPage() {

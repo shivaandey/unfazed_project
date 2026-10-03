@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import axiosInstance from '../../api/axiosInstance';
 
 export default function CheckoutButton({ amount, packageType, clientId, therapistId, onSuccess }) {
@@ -63,7 +63,7 @@ export default function CheckoutButton({ amount, packageType, clientId, therapis
             } else {
               alert('Payment successful! Invoice generated.');
             }
-          } catch (err) {
+          } catch {
             alert('Payment verification failed.');
           }
         },

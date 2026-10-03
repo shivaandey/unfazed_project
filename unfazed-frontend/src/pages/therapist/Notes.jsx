@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Sidebar from '../../components/common/Sidebar';
@@ -28,7 +28,7 @@ export default function Notes() {
     onUpdate: ({ editor: currentEditor }) => setFreeform(currentEditor.getHTML())
   });
 
-  const hydrateForm = (note) => {
+  const hydrateForm = useCallback((note) => {
     if (!note) {
       setSoap({ subjective: '', objective: '', assessment: '', plan: '' });
       setDap({ data: '', assessment: '', plan: '' });
@@ -57,40 +57,15 @@ export default function Notes() {
       dap: note.dap || { data: '', assessment: '', plan: '' },
       content: note.content || ''
     });
-  };
+  }, [clientId, editor]);
 
-  const loadSavedNotes = async (selectedClientId) => {
-    setSelectedDraftId('');
-    hydrateForm(null);
+  const fetchSavedNotes = useCallback(async (selectedClientId) => {
+    if (!selectedClientId) return [];
+    const response = await axiosInstance.get(`/notes/client/${selectedClientId}`);
+    return (Array.isArray(response.data) ? response.data : []).filter((note) => !note.isLocked);
+  }, []);
 
-    if (!selectedClientId) {
-      setSavedNotes([]);
-      return;
-    }
-
-    try {
-      const response = await axiosInstance.get(`/notes/client/${selectedClientId}`);
-      const notes = Array.isArray(response.data) ? response.data : [];
-      const activeDrafts = notes.filter((note) => !note.isLocked);
-      setSavedNotes(activeDrafts);
-
-      if (activeDrafts.length > 0) {
-        const latestDraft = activeDrafts[0];
-        setSelectedDraftId(latestDraft._id);
-        hydrateForm(latestDraft);
-      }
-    } catch (error) {
-      console.error('Failed to load saved notes', error);
-    }
-  };
-
-  const hasMeaningfulContent = () => {
-    const soapFilled = Object.values(soap).some((value) => String(value).trim());
-    const dapFilled = Object.values(dap).some((value) => String(value).trim());
-    return soapFilled || dapFilled || String(freeform).trim();
-  };
-
-  const persistNote = async (isLocked = false, silent = false) => {
+  const persistNote = useCallback(async (isLocked = false, silent = false) => {
     if (!clientId) {
       if (!silent) setStatus('Select a client before saving.');
       return;
@@ -120,7 +95,7 @@ export default function Notes() {
         setSelectedDraftId(savedNote._id);
       }
 
-      await loadSavedNotes(clientId);
+      setSavedNotes(await fetchSavedNotes(clientId));
       if (!silent) {
         setStatus(isLocked ? 'Note locked and finalized.' : 'Draft saved.');
       }
@@ -132,7 +107,7 @@ export default function Notes() {
         setStatus(error.response?.data?.message || 'Unable to save note.');
       }
     }
-  };
+  }, [clientId, templateType, noteType, soap, dap, freeform, selectedDraftId, fetchSavedNotes]);
 
   useEffect(() => {
     const loadClients = async () => {
@@ -156,12 +131,29 @@ export default function Notes() {
   }, [editor, freeform, templateType]);
 
   useEffect(() => {
-    if (!clientId) return;
-    loadSavedNotes(clientId);
-  }, [clientId]);
+    if (!clientId) return undefined;
+    let active = true;
+
+    fetchSavedNotes(clientId)
+      .then((drafts) => {
+        if (!active) return;
+        setSavedNotes(drafts);
+        if (drafts.length > 0) {
+          setSelectedDraftId(drafts[0]._id);
+          hydrateForm(drafts[0]);
+        }
+      })
+      .catch((error) => {
+        if (active) console.error('Failed to load saved notes', error);
+      });
+
+    return () => { active = false; };
+  }, [clientId, fetchSavedNotes, hydrateForm]);
 
   useEffect(() => {
-    if (!clientId || !hasMeaningfulContent()) return;
+    const soapFilled = Object.values(soap).some((value) => String(value).trim());
+    const dapFilled = Object.values(dap).some((value) => String(value).trim());
+    if (!clientId || !(soapFilled || dapFilled || String(freeform).trim())) return;
 
     const payload = {
       clientId,
@@ -182,7 +174,7 @@ export default function Notes() {
     }, 900);
 
     return () => clearTimeout(debounceRef.current);
-  }, [clientId, templateType, noteType, soap, dap, freeform]);
+  }, [clientId, templateType, noteType, soap, dap, freeform, persistNote]);
 
   const filteredDrafts = savedNotes.filter((note) => {
     const matchesType = draftFilter === 'all' || note.type === draftFilter;
@@ -229,7 +221,7 @@ export default function Notes() {
         setSelectedDraftId('');
         hydrateForm(null);
       }
-      await loadSavedNotes(clientId);
+      setSavedNotes(await fetchSavedNotes(clientId));
       setStatus('Draft deleted.');
     } catch (error) {
       setStatus(error.response?.data?.message || 'Unable to delete draft.');

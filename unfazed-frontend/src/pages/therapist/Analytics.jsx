@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import axiosInstance from '../../api/axiosInstance';
 import Sidebar from '../../components/common/Sidebar';
 import UpgradePrompt from '../../components/common/UpgradePrompt';

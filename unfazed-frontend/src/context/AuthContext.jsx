@@ -1,7 +1,6 @@
-import React, { createContext, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axiosInstance from '../api/axiosInstance';
-
-export const AuthContext = createContext();
+import { AuthContext } from './AuthContextValue';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -22,7 +21,7 @@ export const AuthProvider = ({ children }) => {
           const response = await axiosInstance.get('/auth/me');
           setUser(response.data);
         }
-      } catch (error) {
+      } catch {
         console.error('Session expired or invalid token');
         localStorage.removeItem('token');
       } finally {

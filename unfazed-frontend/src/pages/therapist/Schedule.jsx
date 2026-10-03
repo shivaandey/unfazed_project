@@ -12,24 +12,29 @@ export default function Schedule() {
   const [appointments, setAppointments] = useState([]);
   const [status, setStatus] = useState('');
 
-  const load = async () => {
-    try {
-      const [availability, appointmentResponse] = await Promise.all([
-        axiosInstance.get('/schedule/availability/me').catch(() => ({ data: null })),
-        axiosInstance.get('/schedule/appointments')
-      ]);
-      if (availability.data) {
-        setDuration(availability.data.sessionDuration);
-        setBuffer(availability.data.bufferTime);
-        setWeeklySchedule(availability.data.weeklySchedule?.length ? days.map((_, dayOfWeek) => availability.data.weeklySchedule.find((item) => item.dayOfWeek === dayOfWeek) || { dayOfWeek, slots: [] }) : emptySchedule);
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const [availability, appointmentResponse] = await Promise.all([
+          axiosInstance.get('/schedule/availability/me').catch(() => ({ data: null })),
+          axiosInstance.get('/schedule/appointments')
+        ]);
+        if (!active) return;
+        if (availability.data) {
+          setDuration(availability.data.sessionDuration);
+          setBuffer(availability.data.bufferTime);
+          setWeeklySchedule(availability.data.weeklySchedule?.length ? days.map((_, dayOfWeek) => availability.data.weeklySchedule.find((item) => item.dayOfWeek === dayOfWeek) || { dayOfWeek, slots: [] }) : emptySchedule);
+        }
+        setAppointments(appointmentResponse.data);
+      } catch (error) {
+        if (active) setStatus(error.response?.data?.message || 'Unable to load appointments.');
       }
-      setAppointments(appointmentResponse.data);
-    } catch (error) {
-      setStatus(error.response?.data?.message || 'Unable to load appointments.');
-    }
-  };
+    };
 
-  useEffect(() => { load(); }, []);
+    load();
+    return () => { active = false; };
+  }, []);
 
   const updateDay = (dayOfWeek, field, value) => setWeeklySchedule((current) => current.map((day) => day.dayOfWeek === dayOfWeek ? { ...day, slots: [{ ...(day.slots[0] || {}), [field]: value }] } : day));
 

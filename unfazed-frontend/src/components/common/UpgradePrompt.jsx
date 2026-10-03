@@ -1,5 +1,3 @@
-import React from 'react';
-
 export default function UpgradePrompt({ featureKey, currentTier = 'starter' }) {
   return (
     <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900 shadow-sm">

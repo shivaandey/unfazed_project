@@ -1,7 +1,7 @@
-import React, { useState, useContext } from 'react';
+import { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axiosInstance from '../../api/axiosInstance';
-import { AuthContext } from '../../context/AuthContext';
+import { AuthContext } from '../../context/AuthContextValue';
 import Footer from '../../components/common/Footer';
 
 export default function Register() {
