@@ -101,11 +101,20 @@ module.exports = (io) => {
       socket.data = {};
     });
 
-    socket.on('send-message', async ({ message }) => {
+    socket.on('send-message', async ({ message } = {}, acknowledge = () => {}) => {
       const { roomId, therapistId, clientId, role, name } = socket.data;
-      if (!roomId || !message?.trim() || !['therapist', 'client'].includes(role)) return;
-      const saved = await ChatMessage.create({ roomId, therapistId, clientId, senderRole: role, senderName: name, message: message.trim() });
-      io.to(roomId).emit('receive-message', saved);
+      if (!roomId || !message?.trim() || !['therapist', 'client'].includes(role)) {
+        acknowledge({ ok: false, message: 'Chat is not ready. Reconnect and try again.' });
+        return;
+      }
+      try {
+        const saved = await ChatMessage.create({ roomId, therapistId, clientId, senderRole: role, senderName: name, message: message.trim() });
+        io.to(roomId).emit('receive-message', saved);
+        acknowledge({ ok: true });
+      } catch (error) {
+        console.error('Chat message failed:', error.message);
+        acknowledge({ ok: false, message: 'Message could not be saved. Please try again.' });
+      }
     });
 
     socket.on('typing', ({ isTyping }) => {

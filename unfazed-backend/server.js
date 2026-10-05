@@ -4,7 +4,7 @@ dotenv.config();
 const http = require('http');
 const { Server } = require('socket.io');
 const connectDB = require('./src/config/db');
-const { allowedOrigins } = require('./src/config/cors');
+const { corsOrigin } = require('./src/config/cors');
 const app = require('./src/app');
 const initChatSocket = require('./src/sockets/chatSocket');
 const Session = require('./src/models/Session');
@@ -14,7 +14,7 @@ const { expirePaymentHolds } = require('./src/controllers/schedulingController')
 
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: allowedOrigins }
+  cors: { origin: corsOrigin }
 });
 
 initChatSocket(io);

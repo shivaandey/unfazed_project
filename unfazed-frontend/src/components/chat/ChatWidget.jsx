@@ -6,23 +6,32 @@ const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000', { 
 export default function ChatWidget({ therapistId, clientId, clientEmail, role = 'client', name = 'Client', accessToken, bookingSessionId }) {
   const resolvedClientId = clientId || '';
   const resolvedEmail = (clientEmail || '').trim().toLowerCase();
-  const roomKey = bookingSessionId ? `booking-${bookingSessionId}` : resolvedEmail || resolvedClientId;
-  const roomId = [String(therapistId), String(roomKey)].sort().join('-');
   const token = accessToken || (role === 'client' ? sessionStorage.getItem('clientChatToken') : localStorage.getItem('token'));
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [roomReady, setRoomReady] = useState(false);
   const [connectionError, setConnectionError] = useState('');
   const endRef = useRef(null);
 
   useEffect(() => {
+    setRoomReady(false);
     const handleHistory = (history) => setMessages(history);
     const handleMessage = (message) => setMessages((prev) => [...prev, message]);
     const handleTyping = ({ sender, isTyping: typing }) => sender !== role && setIsTyping(typing);
-    const handleRoomError = ({ message }) => setConnectionError(message);
+    const handleRoomError = ({ message }) => {
+      setRoomReady(false);
+      setConnectionError(message);
+    };
     const handleJoined = () => {
+      setRoomReady(true);
       setConnectionError('');
       socket.emit('mark-read');
+    };
+    const joinRoom = () => socket.emit('join-room', { therapistId, clientId: resolvedClientId, clientEmail: resolvedEmail, role, name, token, bookingSessionId });
+    const handleDisconnect = () => {
+      setRoomReady(false);
+      setConnectionError('Chat disconnected. Reconnecting...');
     };
 
     socket.on('joined-room', handleJoined);
@@ -30,7 +39,9 @@ export default function ChatWidget({ therapistId, clientId, clientEmail, role = 
     socket.on('receive-message', handleMessage);
     socket.on('typing-status', handleTyping);
     socket.on('room-error', handleRoomError);
-    socket.emit('join-room', { therapistId, clientId: resolvedClientId, clientEmail: resolvedEmail, role, name, token, bookingSessionId });
+    socket.on('connect', joinRoom);
+    socket.on('disconnect', handleDisconnect);
+    if (socket.connected) joinRoom();
 
     return () => {
       socket.emit('leave-room');
@@ -39,6 +50,8 @@ export default function ChatWidget({ therapistId, clientId, clientEmail, role = 
       socket.off('receive-message', handleMessage);
       socket.off('typing-status', handleTyping);
       socket.off('room-error', handleRoomError);
+      socket.off('connect', joinRoom);
+      socket.off('disconnect', handleDisconnect);
     };
   }, [therapistId, resolvedClientId, resolvedEmail, role, name, token, bookingSessionId]);
 
@@ -47,18 +60,25 @@ export default function ChatWidget({ therapistId, clientId, clientEmail, role = 
   }, [messages, isTyping]);
 
   const sendMessage = () => {
-    if (!draft.trim()) return;
+    const message = draft.trim();
+    if (!message || !roomReady || !socket.connected) return;
 
-    socket.emit('send-message', { roomId, message: draft.trim() });
-    socket.emit('typing', { isTyping: false });
-    setDraft('');
+    socket.timeout(10000).emit('send-message', { message }, (error, response) => {
+      if (error || !response?.ok) {
+        setConnectionError(response?.message || 'Message could not be sent. Please try again.');
+        return;
+      }
+      setDraft((currentDraft) => currentDraft === message ? '' : currentDraft);
+      setConnectionError('');
+      socket.emit('typing', { isTyping: false });
+    });
   };
 
   return (
     <div className="mt-8 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-bold text-[#0B0B45]">Message therapist</h3>
-        <span className="text-xs text-gray-500">{isTyping ? 'Typing…' : 'Online'}</span>
+        <span className="text-xs text-gray-500">{roomReady ? (isTyping ? 'Typing…' : 'Online') : 'Connecting…'}</span>
       </div>
 
       {connectionError && <p className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{connectionError}</p>}
@@ -85,7 +105,7 @@ export default function ChatWidget({ therapistId, clientId, clientEmail, role = 
           placeholder="Type a message"
           className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#F28C28]"
         />
-        <button onClick={sendMessage} className="rounded-xl bg-[#F28C28] px-4 py-2 text-sm font-bold text-white hover:bg-orange-600">
+        <button onClick={sendMessage} disabled={!roomReady || !draft.trim()} className="rounded-xl bg-[#F28C28] px-4 py-2 text-sm font-bold text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50">
           Send
         </button>
       </div>
