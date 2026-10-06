@@ -1,5 +1,5 @@
 const configuredOrigins = process.env.CLIENT_ORIGINS?.trim();
-const allowedOrigins = (configuredOrigins || 'http://localhost:5173,http://localhost:5174')
+const allowedOrigins = (configuredOrigins || 'http://localhost:5173,http://localhost:5174,https://unfazed-project-rho.vercel.app')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
